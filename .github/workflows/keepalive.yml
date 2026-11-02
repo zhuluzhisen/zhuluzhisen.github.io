@@ -1,15 +1,22 @@
 name: Supabase Keepalive
 
-# 免费版 Supabase 连续 7 天没有请求会被暂停，暂停后第一次访问要等冷启动。
-# 这个工作流每天发一次请求，让项目保持清醒。
+# 免费版 Supabase 连续 7 天没有「数据库活动」会被暂停。
 #
-# 需要仓库 Settings → Secrets and variables → Actions 里配一个：
-#   SUPABASE_URL = https://你的项目ref.supabase.co
-# 没配的话会直接跳过，不会报红。
+# 关键细节：Supabase 判定的是有没有真的查到数据库，所以必须查一张真实的表。
+# 打 /auth/v1/health 或 /rest/v1/ 根路径只会拿到 200 假绿灯，数据库依然被暂停。
+# 下面的请求会经过 PostgREST → Postgres → RLS 策略，属于真实活动。
+#
+# 需要仓库 Settings → Secrets and variables → Actions 里配两个：
+#   SUPABASE_URL        = https://你的项目ref.supabase.co
+#   SUPABASE_ANON_KEY   = anon / publishable key（本来就会公开在前端，不敏感）
+# 没配的话直接跳过，不会报红。
+#
+# 注意：GitHub 的定时工作流在仓库 60 天没有任何提交后会被自动禁用。
+# 这个任务一旦停跑不会再有人通知你，所以偶尔进 Actions 页看一眼是值得的。
 
 on:
   schedule:
-    # 每天 UTC 03:17（北京时间 11:17，避开整点的调度高峰）
+    # 每天 UTC 03:17（北京时间 11:17，避开整点调度高峰）
     - cron: '17 3 * * *'
   workflow_dispatch:
 
@@ -18,28 +25,45 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Ping Supabase
+      - name: Ping database（真实查询，不是健康检查）
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
         run: |
-          if [ -z "$SUPABASE_URL" ]; then
-            echo "未配置 SUPABASE_URL，跳过保活（站点还没启用云同步时属正常）"
+          if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_ANON_KEY" ]; then
+            echo "未配置 Secret，跳过保活（站点还没启用云同步时属正常）"
             exit 0
           fi
 
-          url="${SUPABASE_URL%/}/rest/v1/"
-          code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 30 "$url" || echo "000")
-          echo "GET $url → HTTP $code"
+          url="${SUPABASE_URL%/}/rest/v1/player_state?select=user_id&limit=1"
+          body=$(mktemp)
+          code=$(curl -s -o "$body" -w "%{http_code}" --max-time 30 \
+            -H "apikey: $SUPABASE_ANON_KEY" \
+            -H "Authorization: Bearer $SUPABASE_ANON_KEY" \
+            "$url" || echo "000")
+
+          echo "GET player_state → HTTP $code"
+          echo "响应体：$(head -c 300 "$body")"
 
           case "$code" in
-            000)
-              echo "请求没发出去，检查 SUPABASE_URL 是否正确"
+            200)
+              # anon 没有 select 策略，返回空数组 [] 是正常的 —— 查询确实执行了
+              echo "保活成功：数据库被真实查询过"
+              ;;
+            404)
+              echo "::error::表不存在（HTTP 404）。建表 SQL 没执行，或表名被改过"
               exit 1
               ;;
-            401|403|404|200)
-              echo "项目在线（$code 说明服务器已响应，足够保活）"
+            401|403)
+              echo "::error::鉴权失败（HTTP $code）。检查 SUPABASE_ANON_KEY 是否填对"
+              exit 1
+              ;;
+            540)
+              echo "::error::项目已被暂停（HTTP 540）。去 Supabase 后台点 Restore project"
+              exit 1
               ;;
             *)
-              echo "返回 $code，项目应该是醒着的"
+              echo "::error::保活失败（HTTP $code），项目可能不可用"
+              exit 1
               ;;
           esac

@@ -1,0 +1,62 @@
+name: Supabase Backup
+
+# 免费版 Supabase 不提供可下载的备份，也没有时间点恢复（PITR）。
+# 这个工作流每天把玩家的云端存档导出一份 JSON 存进 GitHub Actions 产物，
+# 保留 90 天 —— 误删、误改、账号被锁都还有得救。
+#
+# 需要仓库 Settings → Secrets and variables → Actions 里配：
+#   SUPABASE_URL              = https://你的项目ref.supabase.co
+#   SUPABASE_SERVICE_ROLE_KEY = 后台 Settings → API 里的 service_role key
+#
+# 为什么这里可以用 service_role：它只在 GitHub 的服务器上使用，不会进入
+# 任何前端产物，也不会出现在仓库里。千万不要把它填进 src/lib/cloud-config.ts。
+#
+# 没配的话直接跳过，不会报红。
+
+on:
+  schedule:
+    # 每天 UTC 03:40（比保活晚一点，避免同时跑）
+    - cron: '40 3 * * *'
+  workflow_dispatch:
+
+jobs:
+  dump:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Export player_state
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          if [ -z "$SUPABASE_URL" ] || [ -z "$SERVICE_KEY" ]; then
+            echo "未配置备份所需 Secret，跳过"
+            exit 0
+          fi
+
+          mkdir -p backup
+          file="backup/player_state-$(date +%Y-%m-%d).json"
+
+          # -f：HTTP 错误直接失败，避免把错误信息当成备份存下来
+          curl -sf --max-time 60 \
+            "${SUPABASE_URL%/}/rest/v1/player_state?select=*" \
+            -H "apikey: $SERVICE_KEY" \
+            -H "Authorization: Bearer $SERVICE_KEY" \
+            -H "Accept: application/json" \
+            -o "$file"
+
+          bytes=$(wc -c < "$file")
+          rows=$(python3 -c "import json,sys; print(len(json.load(open(sys.argv[1]))))" "$file")
+          echo "备份完成：$rows 行，$bytes 字节 → $file"
+
+          # 导出 0 行大概率说明出问题了（表空或鉴权异常），让它变红引起注意
+          if [ "$rows" -eq 0 ]; then
+            echo "::warning::备份里是 0 行数据。如果这时应该有玩家记录，请检查服务端"
+          fi
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: supabase-backup-${{ github.run_id }}
+          path: backup/
+          retention-days: 90
+          if-no-files-found: ignore

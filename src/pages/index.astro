@@ -52,14 +52,13 @@ const sectors = [
     tone: 'lime',
   },
   {
-    href: '/secret',
+    href: '/about',
     no: '04',
-    icon: 'ri-lock-2-line',
-    title: '秘密档案',
-    en: 'CLASSIFIED',
-    desc: '不对外开放的那部分，进门请轻声。',
+    icon: 'ri-user-smile-line',
+    title: '关于',
+    en: 'ABOUT',
+    desc: '一些碎碎念，和这个站为什么长这样。',
     tone: 'rose',
-    secret: true,
   },
 ];
 
@@ -110,13 +109,13 @@ const keywords = ['PHOTOGRAPHY', 'ASTRO 7', '夜色', '光影', '笔记', '绝�
       </p>
 
       <div class="hero-actions reveal" style="--i:4">
-        <a href="/secret" class="btn btn-primary btn-magnet">
-          <i class="ri-lock-2-line" aria-hidden="true"></i>
-          进入秘密档案
+        <a href="/blog" class="btn btn-primary btn-magnet">
+          <i class="ri-quill-pen-line" aria-hidden="true"></i>
+          开始阅读
         </a>
-        <a href="/blog" class="btn btn-ghost">
-          <i class="ri-arrow-right-line" aria-hidden="true"></i>
-          先随便看看
+        <a href="/gallery" class="btn btn-ghost">
+          <i class="ri-image-2-line" aria-hidden="true"></i>
+          看看相册
         </a>
       </div>
 
@@ -144,7 +143,7 @@ const keywords = ['PHOTOGRAPHY', 'ASTRO 7', '夜色', '光影', '笔记', '绝�
       {
         sectors.map((s, i) => (
           <a
-            class:list={['sector', 'glass', s.secret && 'is-secret']}
+            class:list={['sector', 'glass']}
             href={s.href}
             data-tone={s.tone}
             style={`--i:${i}`}
@@ -219,31 +218,6 @@ const keywords = ['PHOTOGRAPHY', 'ASTRO 7', '夜色', '光影', '笔记', '绝�
         }
       </ul>
     </div>
-  </section>
-
-  <!-- ==================== 秘密档案入口 ==================== -->
-  <section class="section container-x">
-    <a class="vault reveal" href="/secret">
-      <span class="vault-tape" aria-hidden="true">TOP SECRET</span>
-      <div class="vault-body">
-        <span class="vault-lock" aria-hidden="true">
-          <i class="ri-lock-2-line"></i>
-        </span>
-        <div class="vault-copy">
-          <p class="section-kicker">CLASSIFIED ACCESS</p>
-          <h2 class="vault-title">秘密档案</h2>
-          <p class="vault-desc">
-            照片、碎碎念，和没打算公开的那些字。
-            <span class="redact" aria-hidden="true">████████</span>
-          </p>
-        </div>
-        <span class="vault-cta">
-          解密进入
-          <i class="ri-arrow-right-up-line" aria-hidden="true"></i>
-        </span>
-      </div>
-      <span class="vault-scan" aria-hidden="true"></span>
-    </a>
   </section>
 
   <!-- ==================== 尾部 CTA ==================== -->
@@ -782,16 +756,6 @@ const keywords = ['PHOTOGRAPHY', 'ASTRO 7', '夜色', '光影', '笔记', '绝�
     color: var(--tone, var(--color-cyan));
   }
 
-  .is-secret {
-    background:
-      repeating-linear-gradient(
-        -45deg,
-        color-mix(in oklab, var(--color-rose) 5%, transparent) 0 10px,
-        transparent 10px 20px
-      ),
-      color-mix(in oklab, var(--color-ink-2) 78%, transparent);
-  }
-
   /* ==================== HUD 控制台 ==================== */
   .console {
     padding: 1.6rem 1.7rem 1.4rem;
@@ -954,154 +918,7 @@ const keywords = ['PHOTOGRAPHY', 'ASTRO 7', '夜色', '光影', '笔记', '绝�
     flex: none;
   }
 
-  /* ==================== 秘密档案入口 ==================== */
-  .vault {
-    position: relative;
-    display: block;
-    border-radius: 26px;
-    overflow: hidden;
-    border: 1px solid color-mix(in oklab, var(--color-rose) 30%, transparent);
-    background:
-      radial-gradient(
-        ellipse 60% 120% at 82% 0%,
-        color-mix(in oklab, var(--color-rose) 16%, transparent),
-        transparent 70%
-      ),
-      color-mix(in oklab, var(--color-ink-2) 82%, transparent);
-    transition:
-      transform 0.4s cubic-bezier(0.22, 1, 0.36, 1),
-      border-color 0.4s ease,
-      box-shadow 0.4s ease;
-  }
 
-  .vault:hover {
-    transform: translateY(-4px);
-    border-color: color-mix(in oklab, var(--color-rose) 60%, transparent);
-    box-shadow: 0 34px 70px -40px color-mix(in oklab, var(--color-rose) 80%, transparent);
-  }
-
-  .vault-tape {
-    position: absolute;
-    top: 16px;
-    right: -44px;
-    transform: rotate(38deg);
-    padding: 0.28rem 3.2rem;
-    font-family: var(--font-mono);
-    font-size: 0.56rem;
-    letter-spacing: 0.3em;
-    color: #1a0710;
-    background: color-mix(in oklab, var(--color-rose) 88%, #fff);
-    z-index: 2;
-  }
-
-  .vault-body {
-    position: relative;
-    z-index: 1;
-    display: flex;
-    align-items: center;
-    gap: 1.5rem;
-    padding: 2.2rem 2.1rem;
-  }
-
-  .vault-lock {
-    display: grid;
-    place-items: center;
-    width: 62px;
-    height: 62px;
-    flex: none;
-    border-radius: 20px;
-    font-size: 1.5rem;
-    color: var(--color-rose);
-    background: color-mix(in oklab, var(--color-rose) 12%, transparent);
-    border: 1px solid color-mix(in oklab, var(--color-rose) 34%, transparent);
-    box-shadow: 0 0 40px -8px color-mix(in oklab, var(--color-rose) 55%, transparent);
-    animation: lock-breathe 3.2s ease-in-out infinite;
-  }
-
-  @keyframes lock-breathe {
-    0%,
-    100% {
-      box-shadow: 0 0 30px -10px color-mix(in oklab, var(--color-rose) 50%, transparent);
-    }
-    50% {
-      box-shadow: 0 0 52px -6px color-mix(in oklab, var(--color-rose) 75%, transparent);
-    }
-  }
-
-  .vault-copy {
-    flex: 1;
-    min-width: 0;
-  }
-
-  .vault-title {
-    font-size: clamp(1.4rem, 3.2vw, 1.9rem);
-    margin: 0 0 0.35rem;
-  }
-
-  .vault-desc {
-    margin: 0;
-    font-size: 0.86rem;
-    color: var(--color-fog);
-  }
-
-  .redact {
-    display: inline-block;
-    margin-left: 0.35rem;
-    color: transparent;
-    background: color-mix(in oklab, var(--color-fog) 55%, transparent);
-    border-radius: 3px;
-    line-height: 1;
-    vertical-align: middle;
-  }
-
-  .vault-cta {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.4rem;
-    flex: none;
-    padding: 0.6rem 1.15rem;
-    border-radius: 999px;
-    font-size: 0.82rem;
-    font-weight: 600;
-    color: var(--color-rose);
-    border: 1px solid color-mix(in oklab, var(--color-rose) 40%, transparent);
-    background: color-mix(in oklab, var(--color-rose) 8%, transparent);
-    transition: all 0.35s cubic-bezier(0.22, 1, 0.36, 1);
-  }
-
-  .vault:hover .vault-cta {
-    color: #1a0710;
-    background: var(--color-rose);
-    border-color: var(--color-rose);
-    transform: translateX(3px);
-  }
-
-  .vault-scan {
-    position: absolute;
-    top: 0;
-    bottom: 0;
-    left: -30%;
-    width: 30%;
-    background: linear-gradient(
-      100deg,
-      transparent,
-      color-mix(in oklab, var(--color-rose) 12%, transparent),
-      transparent
-    );
-    transform: skewX(-18deg);
-    animation: vault-scan 6.5s ease-in-out infinite;
-    pointer-events: none;
-  }
-
-  @keyframes vault-scan {
-    0%,
-    100% {
-      left: -35%;
-    }
-    55% {
-      left: 105%;
-    }
-  }
 
   /* ==================== 尾部 ==================== */
   .closing {
@@ -1186,15 +1003,6 @@ const keywords = ['PHOTOGRAPHY', 'ASTRO 7', '夜色', '光影', '笔记', '绝�
     .tele:nth-child(3) {
       padding-left: 0;
       border-left: 0;
-    }
-    .vault-body {
-      flex-wrap: wrap;
-      gap: 1.1rem;
-      padding: 1.8rem 1.5rem;
-    }
-    .vault-cta {
-      width: 100%;
-      justify-content: center;
     }
   }
 

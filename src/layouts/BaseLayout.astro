@@ -11,6 +11,7 @@ interface Props {
   image?: string;
   article?: boolean;
   publishedTime?: Date;
+  noindex?: boolean;
 }
 
 const {
@@ -19,6 +20,7 @@ const {
   image = '/og.jpg',
   article = false,
   publishedTime,
+  noindex = false,
 } = Astro.props;
 
 const canonical = new URL(Astro.url.pathname, Astro.site ?? 'https://zhuluzhisen.github.io');
@@ -37,6 +39,7 @@ const fullTitle = title.includes('芳') ? title : `${title} · 芳`;
 
     <title>{fullTitle}</title>
     <meta name="description" content={description} />
+    {noindex && <meta name="robots" content="noindex, nofollow" />}
     <link rel="canonical" href={canonical.href} />
 
     <meta property="og:type" content={article ? 'article' : 'website'} />
@@ -130,6 +133,39 @@ const fullTitle = title.includes('芳') ? title : `${title} · 芳`;
           window.addEventListener('scroll', onScroll, { passive: true });
           onScroll();
         }
+
+        // 暗门：在任何页面敲 fang
+        if (!(window as any).__fangDoor) {
+          (window as any).__fangDoor = true;
+
+          const openDoor = () => {
+            const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+            if (reduce) {
+              window.location.href = '/secret';
+              return;
+            }
+            const flash = document.createElement('div');
+            flash.className = 'door-flash';
+            document.body.appendChild(flash);
+            window.setTimeout(() => {
+              window.location.href = '/secret';
+            }, 320);
+          };
+
+          let buf = '';
+          document.addEventListener('keydown', (e: KeyboardEvent) => {
+            if (e.metaKey || e.ctrlKey || e.altKey) return;
+            const t = e.target as HTMLElement | null;
+            if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable))
+              return;
+            if (e.key.length !== 1) return;
+            buf = (buf + e.key.toLowerCase()).slice(-8);
+            if (buf.endsWith('fang')) {
+              buf = '';
+              openDoor();
+            }
+          });
+        }
       }
 
       document.addEventListener('astro:page-load', initPage);
@@ -154,6 +190,34 @@ const fullTitle = title.includes('芳') ? title : `${title} · 芳`;
         );
         box-shadow: 0 0 14px color-mix(in oklab, var(--color-violet) 70%, transparent);
         pointer-events: none;
+      }
+
+      .door-flash {
+        position: fixed;
+        inset: 0;
+        z-index: 9999;
+        pointer-events: none;
+        background: radial-gradient(
+          circle at 50% 50%,
+          color-mix(in oklab, var(--color-rose) 60%, transparent),
+          transparent 62%
+        );
+        animation: door-flash 520ms ease-out forwards;
+      }
+
+      @keyframes door-flash {
+        0% {
+          opacity: 0;
+          transform: scale(0.7);
+        }
+        28% {
+          opacity: 0.95;
+          transform: scale(1);
+        }
+        100% {
+          opacity: 0;
+          transform: scale(1.15);
+        }
       }
     </style>
   </body>

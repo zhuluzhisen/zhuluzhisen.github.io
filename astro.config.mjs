@@ -16,7 +16,8 @@ export default defineConfig({
   integrations: [
     mdx(),
     sitemap({
-      filter: (page) => !page.includes('/404'),
+      // 404 与秘密档案不进站点地图：档案页只留暗门
+      filter: (page) => !page.includes('/404') && !page.includes('/secret'),
     }),
   ],
   vite: {

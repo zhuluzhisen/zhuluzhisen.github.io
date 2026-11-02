@@ -55,6 +55,8 @@ const year = new Date().getFullYear();
   <div class="container-x bottom">
     <p>© {year} 芳 · Built with Astro & Tailwind CSS</p>
     <p class="made">Designed &amp; coded with <span class="heart">♥</span></p>
+    <!-- 有些页面不放进导航：在键盘上敲 fang 试试 -->
+    <a class="door" href="/secret" aria-label="档案室"><span class="sr-only">档案室</span></a>
   </div>
 </footer>
 
@@ -191,6 +193,79 @@ const year = new Date().getFullYear();
     50% {
       transform: scale(1.28);
     }
+  }
+
+  /* ---------- 藏在页脚角落的门 ---------- */
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  .door {
+    position: relative;
+    display: inline-grid;
+    place-items: center;
+    width: 30px;
+    height: 30px;
+    margin: -8px -6px -8px 0;
+    opacity: 0.22;
+    transition: opacity 0.4s ease;
+  }
+
+  .door::before {
+    content: '';
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: var(--color-fog);
+    transition:
+      width 0.35s ease,
+      height 0.35s ease,
+      background 0.35s ease,
+      box-shadow 0.35s ease;
+  }
+
+  .door:hover,
+  .door:focus-visible {
+    opacity: 1;
+  }
+
+  .door:hover::before,
+  .door:focus-visible::before {
+    width: 7px;
+    height: 7px;
+    background: var(--color-rose);
+    box-shadow: 0 0 14px var(--color-rose);
+  }
+
+  .door::after {
+    content: '这里有一道缝';
+    position: absolute;
+    right: 0;
+    bottom: calc(100% + 2px);
+    white-space: nowrap;
+    font-size: 0.62rem;
+    letter-spacing: 0.14em;
+    color: var(--color-rose);
+    opacity: 0;
+    transform: translateY(4px);
+    transition:
+      opacity 0.35s ease,
+      transform 0.35s ease;
+    pointer-events: none;
+  }
+
+  .door:hover::after,
+  .door:focus-visible::after {
+    opacity: 1;
+    transform: none;
   }
 
   @media (max-width: 860px) {

@@ -7,7 +7,6 @@ const nav = [
   { href: '/tags', label: '标签' },
   { href: '/friends', label: '友链' },
   { href: '/about', label: '关于我' },
-  { href: '/secret', label: '秘密档案', secret: true },
 ];
 
 const path = Astro.url.pathname.replace(/\/+$/, '') || '/';
@@ -28,15 +27,7 @@ const isActive = (href: string) =>
     <nav class="nav" aria-label="主导航">
       {
         nav.map((item) => (
-          <a
-            href={item.href}
-            class:list={[
-              'nav-link',
-              isActive(item.href) && 'active',
-              item.secret && 'nav-secret',
-            ]}
-          >
-            {item.secret && <i class="ri-lock-2-line" aria-hidden="true" />}
+          <a href={item.href} class={isActive(item.href) ? 'nav-link active' : 'nav-link'}>
             {item.label}
           </a>
         ))
@@ -66,15 +57,7 @@ const isActive = (href: string) =>
   <div id="mobileNav" class="mobile-nav" hidden>
     {
       nav.map((item) => (
-        <a
-          href={item.href}
-          class:list={[
-            'mobile-link',
-            isActive(item.href) && 'active',
-            item.secret && 'mobile-secret',
-          ]}
-        >
-          {item.secret && <i class="ri-lock-2-line" aria-hidden="true" />}
+        <a href={item.href} class={isActive(item.href) ? 'mobile-link active' : 'mobile-link'}>
           {item.label}
         </a>
       ))
@@ -201,37 +184,6 @@ const isActive = (href: string) =>
     opacity: 0.65;
   }
 
-  /* 秘密档案：锁形图标 + 玫瑰色描边，稍微从导航里跳出来 */
-  .nav-secret {
-    margin-left: 0.25rem;
-    color: var(--color-rose);
-    border: 1px solid color-mix(in oklab, var(--color-rose) 26%, transparent);
-    background: color-mix(in oklab, var(--color-rose) 7%, transparent);
-    font-size: 0.82rem;
-  }
-
-  .nav-secret i {
-    font-size: 0.85em;
-    opacity: 0.9;
-    margin-right: 0.1rem;
-  }
-
-  .nav-secret:hover {
-    color: #fff;
-    border-color: color-mix(in oklab, var(--color-rose) 60%, transparent);
-    background: color-mix(in oklab, var(--color-rose) 18%, transparent);
-  }
-
-  .nav-secret.active {
-    color: #fff;
-    border-color: color-mix(in oklab, var(--color-rose) 70%, transparent);
-    background: color-mix(in oklab, var(--color-rose) 20%, transparent);
-  }
-
-  .nav-secret.active::after {
-    background: linear-gradient(90deg, var(--color-rose), var(--color-violet));
-  }
-
   /* ---------- 右侧按钮 ---------- */
   .actions {
     display: flex;
@@ -303,15 +255,6 @@ const isActive = (href: string) =>
     color: var(--color-cyan);
   }
 
-  .mobile-secret {
-    color: var(--color-rose);
-  }
-
-  .mobile-secret.active {
-    color: var(--color-rose);
-  }
-
-  .mobile-secret i,
   .mobile-link i {
     font-size: 0.85em;
     opacity: 0.75;
@@ -328,9 +271,6 @@ const isActive = (href: string) =>
     .nav-link {
       padding: 0.45rem 0.7rem;
       font-size: 0.84rem;
-    }
-    .nav-secret {
-      font-size: 0.79rem;
     }
   }
 

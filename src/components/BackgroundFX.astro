@@ -1,0 +1,264 @@
+---
+/**
+ * 全局背景特效层：极光光晕 + 网格 + 噪点 + 光标辉光 + 粒子
+ * 所有元素均为 fixed / pointer-events-none，不影响交互
+ */
+---
+
+<div class="fx-root" aria-hidden="true">
+  <!-- 极光光晕 -->
+  <div class="aurora">
+    <span class="blob blob-cyan"></span>
+    <span class="blob blob-violet"></span>
+    <span class="blob blob-rose"></span>
+    <span class="blob blob-lime"></span>
+  </div>
+
+  <!-- 网格底纹 -->
+  <div class="grid-lines"></div>
+
+  <!-- 噪点质感 -->
+  <div class="grain"></div>
+
+  <!-- 光标辉光 -->
+  <div class="cursor-glow" id="cursorGlow"></div>
+
+  <!-- 粒子画布 -->
+  <canvas class="particles" id="particleCanvas"></canvas>
+</div>
+
+<style>
+  .fx-root {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    overflow: hidden;
+  }
+
+  /* ---------- 极光 ---------- */
+  .aurora {
+    position: absolute;
+    inset: -20%;
+    filter: blur(90px) saturate(130%);
+    opacity: 0.5;
+  }
+
+  .blob {
+    position: absolute;
+    display: block;
+    border-radius: 50%;
+    mix-blend-mode: screen;
+  }
+
+  .blob-cyan {
+    width: 46vw;
+    height: 46vw;
+    left: 4%;
+    top: 2%;
+    background: radial-gradient(circle at 30% 30%, #22d3ee 0%, rgba(34, 211, 238, 0) 68%);
+    animation: var(--animate-aurora-a);
+  }
+
+  .blob-violet {
+    width: 52vw;
+    height: 52vw;
+    right: 2%;
+    top: 12%;
+    background: radial-gradient(circle at 60% 40%, #a78bfa 0%, rgba(167, 139, 250, 0) 68%);
+    animation: var(--animate-aurora-b);
+  }
+
+  .blob-rose {
+    width: 44vw;
+    height: 44vw;
+    left: 26%;
+    bottom: 2%;
+    background: radial-gradient(circle at 50% 50%, #fb7185 0%, rgba(251, 113, 133, 0) 70%);
+    animation: var(--animate-aurora-c);
+  }
+
+  .blob-lime {
+    width: 34vw;
+    height: 34vw;
+    right: 22%;
+    bottom: 8%;
+    background: radial-gradient(circle at 50% 50%, #a3e635 0%, rgba(163, 230, 53, 0) 70%);
+    opacity: 0.5;
+    animation: var(--animate-aurora-b);
+  }
+
+  :global(:root[data-theme='light']) .aurora {
+    opacity: 0.28;
+    filter: blur(100px) saturate(160%);
+  }
+
+  :global(:root[data-theme='light']) .blob {
+    mix-blend-mode: multiply;
+  }
+
+  /* ---------- 网格 ---------- */
+  .grid-lines {
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(to right, rgba(255, 255, 255, 0.045) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(255, 255, 255, 0.045) 1px, transparent 1px);
+    background-size: 64px 64px;
+    -webkit-mask-image: radial-gradient(ellipse 100% 70% at 50% 0%, #000 20%, transparent 75%);
+    mask-image: radial-gradient(ellipse 100% 70% at 50% 0%, #000 20%, transparent 75%);
+  }
+
+  :global(:root[data-theme='light']) .grid-lines {
+    background-image:
+      linear-gradient(to right, rgba(10, 15, 35, 0.05) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(10, 15, 35, 0.05) 1px, transparent 1px);
+  }
+
+  /* ---------- 噪点 ---------- */
+  .grain {
+    position: absolute;
+    inset: 0;
+    opacity: 0.035;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  /* ---------- 光标辉光 ---------- */
+  .cursor-glow {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 460px;
+    height: 460px;
+    margin: -230px 0 0 -230px;
+    border-radius: 50%;
+    background: radial-gradient(
+      circle,
+      color-mix(in oklab, var(--color-cyan) 22%, transparent) 0%,
+      color-mix(in oklab, var(--color-violet) 12%, transparent) 38%,
+      transparent 68%
+    );
+    opacity: 0;
+    transition: opacity 0.5s ease;
+    will-change: transform;
+  }
+
+  .cursor-glow.on {
+    opacity: 1;
+  }
+
+  /* ---------- 粒子 ---------- */
+  .particles {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0.75;
+  }
+</style>
+
+<script>
+  // ---- 光标辉光 ----
+  const glow = document.getElementById('cursorGlow');
+  if (glow && window.matchMedia('(pointer: fine)').matches) {
+    let tx = window.innerWidth / 2;
+    let ty = window.innerHeight / 2;
+    let cx = tx;
+    let cy = ty;
+    let raf = 0;
+
+    const loop = () => {
+      cx += (tx - cx) * 0.09;
+      cy += (ty - cy) * 0.09;
+      glow.style.transform = `translate3d(${cx}px, ${cy}px, 0)`;
+      raf = requestAnimationFrame(loop);
+    };
+
+    window.addEventListener(
+      'pointermove',
+      (e) => {
+        tx = e.clientX;
+        ty = e.clientY;
+        glow.classList.add('on');
+      },
+      { passive: true },
+    );
+    document.addEventListener('pointerleave', () => glow.classList.remove('on'));
+    raf = requestAnimationFrame(loop);
+  }
+
+  // ---- 粒子星尘 ----
+  const canvas = document.getElementById('particleCanvas') as HTMLCanvasElement | null;
+  if (canvas) {
+    const ctx = canvas.getContext('2d');
+    if (ctx) {
+      let w = 0;
+      let h = 0;
+      let dots: { x: number; y: number; r: number; vx: number; vy: number; a: number }[] = [];
+
+      const palette = ['167, 139, 250', '34, 211, 238', '251, 113, 133', '183, 233, 232'];
+
+      const resize = () => {
+        w = canvas.clientWidth;
+        h = canvas.clientHeight;
+        canvas.width = w * devicePixelRatio;
+        canvas.height = h * devicePixelRatio;
+        ctx.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0);
+
+        const count = Math.min(110, Math.round((w * h) / 16000));
+        dots = Array.from({ length: count }, () => ({
+          x: Math.random() * w,
+          y: Math.random() * h,
+          r: Math.random() * 1.6 + 0.4,
+          vx: (Math.random() - 0.5) * 0.22,
+          vy: (Math.random() - 0.5) * 0.22,
+          a: Math.random() * 0.5 + 0.2,
+        }));
+      };
+
+      const draw = () => {
+        ctx.clearRect(0, 0, w, h);
+
+        // 邻近连线
+        for (let i = 0; i < dots.length; i++) {
+          const p = dots[i];
+          for (let j = i + 1; j < dots.length; j++) {
+            const q = dots[j];
+            const dx = p.x - q.x;
+            const dy = p.y - q.y;
+            const d2 = dx * dx + dy * dy;
+            if (d2 < 15000) {
+              ctx.strokeStyle = `rgba(167,139,250,${0.12 * (1 - d2 / 15000)})`;
+              ctx.lineWidth = 0.6;
+              ctx.beginPath();
+              ctx.moveTo(p.x, p.y);
+              ctx.lineTo(q.x, q.y);
+              ctx.stroke();
+            }
+          }
+        }
+
+        dots.forEach((p, i) => {
+          p.x += p.vx;
+          p.y += p.vy;
+          if (p.x < -10) p.x = w + 10;
+          if (p.x > w + 10) p.x = -10;
+          if (p.y < -10) p.y = h + 10;
+          if (p.y > h + 10) p.y = -10;
+
+          const c = palette[i % palette.length];
+          ctx.fillStyle = `rgba(${c},${p.a})`;
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+          ctx.fill();
+        });
+
+        requestAnimationFrame(draw);
+      };
+
+      resize();
+      draw();
+      window.addEventListener('resize', resize);
+    }
+  }
+</script>

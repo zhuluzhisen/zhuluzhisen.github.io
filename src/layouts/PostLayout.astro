@@ -1,0 +1,248 @@
+---
+import { Image } from 'astro:assets';
+import BaseLayout from './BaseLayout.astro';
+import Gallery from '../components/Gallery.astro';
+
+interface Props {
+  title: string;
+  description: string;
+  pubDate: Date;
+  updatedDate?: Date;
+  tags: string[];
+  cover?: ImageMetadata;
+  gallery?: { src: ImageMetadata; alt?: string; caption?: string }[];
+}
+
+const { title, description, pubDate, updatedDate, tags = [], cover, gallery = [] } = Astro.props;
+
+const dateText = pubDate.toLocaleDateString('zh-CN', {
+  year: 'numeric',
+  month: 'long',
+  day: 'numeric',
+});
+
+const readTime = Math.max(1, Math.round(600 / 300));
+---
+
+<BaseLayout title={title} description={description} article publishedTime={pubDate}>
+  <article class="post">
+    <header class="post-head container-x reveal is-visible">
+      <div class="crumb">
+        <a href="/blog">← 返回文章列表</a>
+      </div>
+
+      <h1 class="post-title">{title}</h1>
+      <p class="post-desc">{description}</p>
+
+      <div class="post-meta">
+        <span class="meta-item">
+          <i class="ri-calendar-line" aria-hidden="true"></i>
+          <time datetime={pubDate.toISOString()}>{dateText}</time>
+        </span>
+        {
+          updatedDate && (
+            <span class="meta-item">
+              <i class="ri-refresh-line" aria-hidden="true"></i>
+              更新于 {updatedDate.toLocaleDateString('zh-CN')}
+            </span>
+          )
+        }
+        <span class="meta-item">
+          <i class="ri-time-line" aria-hidden="true"></i>
+          约 {readTime} 分钟
+        </span>
+        {gallery.length > 0 && (
+          <span class="meta-item">
+            <i class="ri-image-line" aria-hidden="true"></i>
+            含 {gallery.length} 张图
+          </span>
+        )}
+      </div>
+
+      {
+        tags.length > 0 && (
+          <div class="post-tags">
+            {tags.map((t) => (
+              <a href={`/tags/${encodeURIComponent(t)}`} class="pill">
+                #{t}
+              </a>
+            ))}
+          </div>
+        )
+      }
+    </header>
+
+    {
+      cover && (
+        <div class="container-x reveal is-visible">
+          <figure class="cover">
+            <Image
+              src={cover}
+              alt={title}
+              layout="constrained"
+              width={1600}
+              sizes="(max-width: 1100px) 92vw, 980px"
+              quality={80}
+              loading="eager"
+              decoding="async"
+            />
+          </figure>
+        </div>
+      )
+    }
+
+    <div class="container-x body-wrap">
+      <div class="prose-fang post-body reveal is-visible">
+        <slot />
+      </div>
+
+      {gallery.length > 0 && <Gallery shots={gallery} columns={2} />}
+    </div>
+
+    <footer class="container-x post-foot">
+      <div class="foot-card glass glass-edge">
+        <p class="foot-title">读完这篇，写点什么？</p>
+        <p class="foot-sub">联系方式和留言入口在「关于我」页面。</p>
+        <div class="foot-actions">
+          <a href="/blog" class="btn btn-ghost">
+            <i class="ri-article-line" aria-hidden="true"></i>
+            更多文章
+          </a>
+          <a href="/" class="btn btn-primary">
+            <i class="ri-home-heart-line" aria-hidden="true"></i>
+            回到首页
+          </a>
+        </div>
+      </div>
+    </footer>
+  </article>
+</BaseLayout>
+
+<style>
+  .post {
+    padding-top: 3.2rem;
+  }
+
+  .post-head {
+    max-width: 780px;
+    text-align: center;
+    margin-bottom: 2.4rem;
+  }
+
+  .crumb {
+    margin-bottom: 1.4rem;
+    font-size: 0.82rem;
+  }
+
+  .crumb a {
+    color: var(--color-fog);
+    transition: color 0.25s ease;
+  }
+
+  .crumb a:hover {
+    color: var(--color-cyan);
+  }
+
+  .post-title {
+    font-size: clamp(2rem, 5vw, 3rem);
+    line-height: 1.2;
+    margin-bottom: 0.9rem;
+  }
+
+  .post-desc {
+    margin: 0 auto 1.5rem;
+    max-width: 58ch;
+    font-size: 1rem;
+    line-height: 1.8;
+    color: var(--color-fog);
+  }
+
+  .post-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 1.1rem;
+    font-size: 0.8rem;
+    color: var(--color-fog);
+    font-family: var(--font-mono);
+  }
+
+  .meta-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+  }
+
+  .meta-item i {
+    font-size: 0.95rem;
+    color: var(--color-violet);
+  }
+
+  .post-tags {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.45rem;
+    margin-top: 1.3rem;
+  }
+
+  .post-tags .pill {
+    font-size: 0.72rem;
+  }
+
+  .cover {
+    margin: 0 auto 3rem;
+    max-width: 980px;
+    border-radius: 22px;
+    overflow: hidden;
+    border: 1px solid color-mix(in oklab, #ffffff 9%, transparent);
+    box-shadow: 0 40px 90px -40px rgba(0, 0, 0, 0.95);
+  }
+
+  .cover img {
+    display: block;
+    width: 100%;
+    height: auto;
+  }
+
+  .body-wrap {
+    max-width: 780px;
+  }
+
+  .post-body {
+    margin-bottom: 1rem;
+  }
+
+  .post-foot {
+    max-width: 780px;
+    margin-top: 3.5rem;
+  }
+
+  .foot-card {
+    padding: 2rem;
+    text-align: center;
+    border-radius: 22px;
+  }
+
+  .foot-title {
+    margin: 0 0 0.4rem;
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 1.15rem;
+    color: #fff;
+  }
+
+  .foot-sub {
+    margin: 0 0 1.4rem;
+    font-size: 0.86rem;
+    color: var(--color-fog);
+  }
+
+  .foot-actions {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 0.8rem;
+  }
+</style>

@@ -1,0 +1,45 @@
+/* Remix Icon (精简版) — 由 scripts/trim-icons.mjs 自动生成，请勿手改 */
+/* 实际使用 24 个图标，保留 24 条规则 */
+
+@font-face {
+  font-family: 'remixicon';
+  src: url('remixicon.woff2') format('woff2');
+  url('remixicon.woff') format('woff');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+[class^='ri-'],
+[class*=' ri-'] {
+  display: inline-block;
+  font-family: 'remixicon' !important;
+  font-style: normal;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+  .ri-archive-line:before { content: '\ea48'; }
+  .ri-arrow-left-line:before { content: '\ea60'; }
+  .ri-arrow-left-s-line:before { content: '\ea64'; }
+  .ri-arrow-right-line:before { content: '\ea6c'; }
+  .ri-arrow-right-s-line:before { content: '\ea6e'; }
+  .ri-arrow-right-up-line:before { content: '\ea70'; }
+  .ri-article-line:before { content: '\ea7e'; }
+  .ri-calendar-line:before { content: '\eb27'; }
+  .ri-camera-line:before { content: '\eb31'; }
+  .ri-close-line:before { content: '\eb99'; }
+  .ri-code-box-line:before { content: '\eba7'; }
+  .ri-group-line:before { content: '\ede3'; }
+  .ri-home-heart-line:before { content: '\ee2a'; }
+  .ri-image-2-line:before { content: '\ee45'; }
+  .ri-image-line:before { content: '\ee4b'; }
+  .ri-menu-line:before { content: '\ef3e'; }
+  .ri-moon-line:before { content: '\ef75'; }
+  .ri-quill-pen-line:before { content: '\f04a'; }
+  .ri-refresh-line:before { content: '\f064'; }
+  .ri-search-line:before { content: '\f0d1'; }
+  .ri-sun-line:before { content: '\f1bf'; }
+  .ri-time-line:before { content: '\f20f'; }
+  .ri-user-smile-line:before { content: '\f274'; }
+  .ri-zoom-in-line:before { content: '\f2db'; }

@@ -1,0 +1,160 @@
+---
+import { ClientRouter } from 'astro:transitions';
+import Header from '../components/Header.astro';
+import Footer from '../components/Footer.astro';
+import BackgroundFX from '../components/BackgroundFX.astro';
+import '../styles/global.css';
+
+interface Props {
+  title?: string;
+  description?: string;
+  image?: string;
+  article?: boolean;
+  publishedTime?: Date;
+}
+
+const {
+  title = '芳 · FANG\'S SPACE',
+  description = '记录光影，也记录生活。一个用 Astro 7 + Tailwind 4 重建的个人空间。',
+  image = '/og.jpg',
+  article = false,
+  publishedTime,
+} = Astro.props;
+
+const canonical = new URL(Astro.url.pathname, Astro.site ?? 'https://zhuluzhisen.github.io');
+const fullTitle = title.includes('芳') ? title : `${title} · 芳`;
+---
+
+<!doctype html>
+<html lang="zh-CN" data-theme="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="generator" content={Astro.generator} />
+    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+    <link rel="stylesheet" href="/fonts/remixicon.css" />
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" />
+
+    <title>{fullTitle}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonical.href} />
+
+    <meta property="og:type" content={article ? 'article' : 'website'} />
+    <meta property="og:title" content={fullTitle} />
+    <meta property="og:description" content={description} />
+    <meta property="og:image" content={new URL(image, Astro.site ?? 'https://zhuluzhisen.github.io').href} />
+    <meta property="og:url" content={canonical.href} />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={fullTitle} />
+    <meta name="twitter:description" content={description} />
+    {publishedTime && <meta property="article:published_time" content={publishedTime.toISOString()} />}
+
+    <link rel="alternate" type="application/rss+xml" title="芳 · RSS" href="/rss.xml" />
+
+    <!-- 主题预置，避免闪白 -->
+    <script is:inline>
+      (function () {
+        try {
+          var saved = localStorage.getItem('fang-theme');
+          // 默认暗色极光主题，用户手动切换后以偏好为准
+          var theme = saved === 'light' ? 'light' : 'dark';
+          document.documentElement.setAttribute('data-theme', theme);
+        } catch (e) {
+          document.documentElement.setAttribute('data-theme', 'dark');
+        }
+      })();
+    </script>
+
+    <ClientRouter />
+  </head>
+
+  <body>
+    <BackgroundFX />
+    <Header />
+
+    <div class="progress" id="scrollProgress" aria-hidden="true"></div>
+
+    <main id="main" class="relative z-10">
+      <slot />
+    </main>
+
+    <Footer />
+
+    <script>
+      function initPage() {
+        // 主题切换
+        const toggle = document.getElementById('themeToggle');
+        if (toggle && !toggle.dataset.bound) {
+          toggle.dataset.bound = '1';
+          toggle.addEventListener('click', () => {
+            const cur = document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark';
+            const next = cur === 'light' ? 'dark' : 'light';
+            document.documentElement.setAttribute('data-theme', next);
+            try {
+              localStorage.setItem('fang-theme', next);
+            } catch (e) {
+              /* ignore */
+            }
+          });
+        }
+
+        // 滚动揭示
+        const reveals = document.querySelectorAll<HTMLElement>('.reveal:not(.is-visible)');
+        if ('IntersectionObserver' in window) {
+          const io = new IntersectionObserver(
+            (entries) => {
+              entries.forEach((entry) => {
+                if (entry.isIntersecting) {
+                  entry.target.classList.add('is-visible');
+                  io.unobserve(entry.target);
+                }
+              });
+            },
+            { threshold: 0.12, rootMargin: '0px 0px -60px 0px' },
+          );
+          reveals.forEach((el) => io.observe(el));
+        } else {
+          reveals.forEach((el) => el.classList.add('is-visible'));
+        }
+
+        // 阅读进度
+        const bar = document.getElementById('scrollProgress');
+        if (bar) {
+          const onScroll = () => {
+            const h = document.documentElement.scrollHeight - window.innerHeight;
+            const p = h > 0 ? Math.min(1, window.scrollY / h) : 0;
+            bar.style.transform = `scaleX(${p})`;
+          };
+          window.removeEventListener('scroll', window.__fangScroll || (() => {}));
+          window.__fangScroll = onScroll;
+          window.addEventListener('scroll', onScroll, { passive: true });
+          onScroll();
+        }
+      }
+
+      document.addEventListener('astro:page-load', initPage);
+      initPage();
+    </script>
+
+    <style>
+      .progress {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 2px;
+        z-index: 100;
+        transform-origin: 0 50%;
+        transform: scaleX(0);
+        background: linear-gradient(
+          90deg,
+          var(--color-cyan),
+          var(--color-violet),
+          var(--color-rose)
+        );
+        box-shadow: 0 0 14px color-mix(in oklab, var(--color-violet) 70%, transparent);
+        pointer-events: none;
+      }
+    </style>
+  </body>
+</html>

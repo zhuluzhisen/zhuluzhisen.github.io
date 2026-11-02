@@ -1,0 +1,290 @@
+---
+const nav = [
+  { href: '/', label: '首页' },
+  { href: '/blog', label: '文章' },
+  { href: '/gallery', label: '相册' },
+  { href: '/archives', label: '归档' },
+  { href: '/tags', label: '标签' },
+  { href: '/friends', label: '友链' },
+  { href: '/about', label: '关于我' },
+];
+
+const path = Astro.url.pathname.replace(/\/+$/, '') || '/';
+const isActive = (href: string) =>
+  href === '/' ? path === '/' : path === href || path.startsWith(href + '/');
+---
+
+<header class="site-header" transition:persist="site-header">
+  <div class="container-x bar">
+    <a href="/" class="brand" aria-label="芳 · 首页">
+      <span class="brand-mark">
+        <span class="brand-dot"></span>
+        芳
+      </span>
+      <span class="brand-sub">FANG'S SPACE</span>
+    </a>
+
+    <nav class="nav" aria-label="主导航">
+      {
+        nav.map((item) => (
+          <a href={item.href} class={isActive(item.href) ? 'nav-link active' : 'nav-link'}>
+            {item.label}
+          </a>
+        ))
+      }
+      <a
+        href="http://shenyu-vip.lofter.com"
+        target="_blank"
+        rel="noopener noreferrer"
+        class="nav-link"
+      >
+        摄影
+        <i class="ri-arrow-right-up-line" aria-hidden="true"></i>
+      </a>
+    </nav>
+
+    <div class="actions">
+      <button id="themeToggle" class="icon-btn" type="button" aria-label="切换主题">
+        <i class="ri-moon-line theme-icon-dark" aria-hidden="true"></i>
+        <i class="ri-sun-line theme-icon-light" aria-hidden="true"></i>
+      </button>
+      <button id="menuToggle" class="icon-btn menu-btn" type="button" aria-label="打开菜单">
+        <i class="ri-menu-line" aria-hidden="true"></i>
+      </button>
+    </div>
+  </div>
+
+  <div id="mobileNav" class="mobile-nav" hidden>
+    {
+      nav.map((item) => (
+        <a href={item.href} class={isActive(item.href) ? 'mobile-link active' : 'mobile-link'}>
+          {item.label}
+        </a>
+      ))
+    }
+    <a
+      href="http://shenyu-vip.lofter.com"
+      target="_blank"
+      rel="noopener noreferrer"
+      class="mobile-link"
+    >
+      摄影外链
+    </a>
+  </div>
+</header>
+
+<style>
+  .site-header {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    backdrop-filter: blur(18px) saturate(150%);
+    -webkit-backdrop-filter: blur(18px) saturate(150%);
+    background: color-mix(in oklab, var(--color-void) 72%, transparent);
+    border-bottom: 1px solid color-mix(in oklab, #ffffff 7%, transparent);
+  }
+
+  .bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1.5rem;
+    height: 68px;
+  }
+
+  /* ---------- 品牌 ---------- */
+  .brand {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.1;
+  }
+
+  .brand-mark {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 1.18rem;
+    color: #fff;
+    letter-spacing: 0.06em;
+  }
+
+  .brand-dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--color-cyan), var(--color-violet));
+    box-shadow: 0 0 14px color-mix(in oklab, var(--color-cyan) 85%, transparent);
+    animation: pulse-dot 2.6s ease-in-out infinite;
+  }
+
+  @keyframes pulse-dot {
+    0%,
+    100% {
+      transform: scale(1);
+      opacity: 1;
+    }
+    50% {
+      transform: scale(1.45);
+      opacity: 0.6;
+    }
+  }
+
+  .brand-sub {
+    font-size: 0.58rem;
+    letter-spacing: 0.34em;
+    color: var(--color-fog);
+    font-family: var(--font-mono);
+  }
+
+  /* ---------- 导航 ---------- */
+  .nav {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+  }
+
+  .nav-link {
+    position: relative;
+    padding: 0.45rem 0.85rem;
+    border-radius: 10px;
+    font-size: 0.88rem;
+    font-weight: 500;
+    color: var(--color-mist);
+    transition:
+      color 0.25s ease,
+      background 0.25s ease;
+  }
+
+  .nav-link:hover {
+    color: #fff;
+    background: color-mix(in oklab, #ffffff 6%, transparent);
+  }
+
+  .nav-link.active {
+    color: #fff;
+  }
+
+  .nav-link.active::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    bottom: 2px;
+    width: 16px;
+    height: 2px;
+    border-radius: 2px;
+    transform: translateX(-50%);
+    background: linear-gradient(90deg, var(--color-cyan), var(--color-violet));
+  }
+
+  .nav-link i {
+    font-size: 0.8em;
+    opacity: 0.65;
+  }
+
+  /* ---------- 右侧按钮 ---------- */
+  .actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .icon-btn {
+    display: inline-grid;
+    place-items: center;
+    width: 38px;
+    height: 38px;
+    border-radius: 12px;
+    border: 1px solid color-mix(in oklab, #ffffff 10%, transparent);
+    background: color-mix(in oklab, #ffffff 4%, transparent);
+    color: var(--color-mist);
+    font-size: 1.15rem;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .icon-btn:hover {
+    color: #fff;
+    border-color: color-mix(in oklab, var(--color-cyan) 55%, transparent);
+    background: color-mix(in oklab, var(--color-cyan) 12%, transparent);
+    transform: translateY(-2px);
+  }
+
+  .theme-icon-light {
+    display: none;
+  }
+
+  :global(:root[data-theme='light']) .theme-icon-dark {
+    display: none;
+  }
+
+  :global(:root[data-theme='light']) .theme-icon-light {
+    display: inline-block;
+  }
+
+  .menu-btn {
+    display: none;
+  }
+
+  /* ---------- 移动端菜单 ---------- */
+  .mobile-nav {
+    display: none;
+    flex-direction: column;
+    padding: 0.6rem 1.25rem 1.1rem;
+    border-top: 1px solid color-mix(in oklab, #ffffff 7%, transparent);
+    background: color-mix(in oklab, var(--color-void) 96%, transparent);
+  }
+
+  .mobile-nav[hidden] {
+    display: none;
+  }
+
+  .mobile-link {
+    padding: 0.7rem 0.2rem;
+    color: var(--color-mist);
+    font-size: 0.92rem;
+    border-bottom: 1px solid color-mix(in oklab, #ffffff 5%, transparent);
+  }
+
+  .mobile-link.active {
+    color: var(--color-cyan);
+  }
+
+  @media (max-width: 900px) {
+    .nav {
+      display: none;
+    }
+    .menu-btn {
+      display: inline-grid;
+    }
+    .mobile-nav {
+      display: flex;
+    }
+  }
+
+  @media (max-width: 420px) {
+    .brand-sub {
+      display: none;
+    }
+  }
+</style>
+
+<script>
+  function initHeader() {
+    const menuBtn = document.getElementById('menuToggle');
+    const mobileNav = document.getElementById('mobileNav');
+    if (menuBtn && mobileNav && !menuBtn.dataset.bound) {
+      menuBtn.dataset.bound = '1';
+      menuBtn.addEventListener('click', () => {
+        mobileNav.hidden = !mobileNav.hidden;
+        menuBtn.innerHTML = mobileNav.hidden
+          ? '<i class="ri-menu-line" aria-hidden="true"></i>'
+          : '<i class="ri-close-line" aria-hidden="true"></i>';
+      });
+    }
+  }
+
+  document.addEventListener('astro:page-load', initHeader);
+  initHeader();
+</script>

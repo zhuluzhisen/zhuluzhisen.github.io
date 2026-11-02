@@ -1,0 +1,214 @@
+---
+import { getCollection } from 'astro:content';
+import BaseLayout from '../layouts/BaseLayout.astro';
+
+const posts = (await getCollection('blog', ({ data }) => !data.draft)).sort(
+  (a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf(),
+);
+
+const grouped = new Map<string, typeof posts>();
+posts.forEach((p) => {
+  const key = String(p.data.pubDate.getFullYear());
+  if (!grouped.has(key)) grouped.set(key, []);
+  grouped.get(key)!.push(p);
+});
+
+const years = [...grouped.keys()].sort((a, b) => Number(b) - Number(a));
+const totalWords = posts.length;
+---
+
+<BaseLayout title="归档" description="按时间倒序排列的全部文章">
+  <div class="page container-x">
+    <header class="page-head reveal is-visible">
+      <p class="section-kicker">ARCHIVE</p>
+      <h1 class="page-title">归档</h1>
+      <p class="page-desc">
+        {years.length} 个年份 · {totalWords} 篇文章
+      </p>
+    </header>
+
+    <div class="timeline">
+      {
+        years.map((year, yi) => (
+          <section class="year-block reveal" style={`--i:${yi}`}>
+            <div class="year-marker">
+              <span class="year-dot" />
+              <h2 class="year-label">{year}</h2>
+              <span class="year-count">{grouped.get(year)!.length} 篇</span>
+            </div>
+
+            <ul class="year-list">
+              {grouped.get(year)!.map((post) => (
+                <li class="entry">
+                  <a href={`/blog/${post.id}/`}>
+                    <time datetime={post.data.pubDate.toISOString()}>
+                      {post.data.pubDate.toLocaleDateString('zh-CN', {
+                        month: '2-digit',
+                        day: '2-digit',
+                      })}
+                    </time>
+                    <span class="entry-title">{post.data.title}</span>
+                    <span class="entry-tags">
+                      {post.data.tags.slice(0, 3).map((t) => (
+                        <span class="pill">{t}</span>
+                      ))}
+                    </span>
+                    <i class="ri-arrow-right-line entry-arrow" aria-hidden="true" />
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </section>
+        ))
+      }
+    </div>
+  </div>
+</BaseLayout>
+
+<style>
+  .page {
+    padding-top: 3.2rem;
+  }
+
+  .page-head {
+    margin-bottom: 2.6rem;
+  }
+
+  .page-title {
+    font-size: clamp(2.2rem, 5vw, 3.2rem);
+    margin-bottom: 0.5rem;
+  }
+
+  .page-desc {
+    margin: 0;
+    color: var(--color-fog);
+    font-size: 0.9rem;
+  }
+
+  .timeline {
+    position: relative;
+    padding-left: 1.4rem;
+  }
+
+  .timeline::before {
+    content: '';
+    position: absolute;
+    left: 5px;
+    top: 8px;
+    bottom: 8px;
+    width: 1px;
+    background: linear-gradient(
+      180deg,
+      var(--color-cyan),
+      var(--color-violet) 45%,
+      transparent
+    );
+    opacity: 0.45;
+  }
+
+  .year-block {
+    margin-bottom: 2.8rem;
+  }
+
+  .year-marker {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    margin-bottom: 1.1rem;
+  }
+
+  .year-dot {
+    width: 11px;
+    height: 11px;
+    border-radius: 50%;
+    background: var(--color-cyan);
+    box-shadow: 0 0 16px var(--color-cyan);
+    margin-left: -1.4rem;
+  }
+
+  .year-label {
+    font-size: 1.6rem;
+    letter-spacing: 0.04em;
+  }
+
+  .year-count {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    color: var(--color-fog);
+    padding: 0.15rem 0.55rem;
+    border-radius: 999px;
+    border: 1px solid color-mix(in oklab, #ffffff 10%, transparent);
+  }
+
+  .year-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .entry a {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.85rem 1.1rem;
+    border-radius: 14px;
+    border: 1px solid transparent;
+    transition: all 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .entry a:hover {
+    background: color-mix(in oklab, var(--color-ink-2) 70%, transparent);
+    border-color: color-mix(in oklab, var(--color-cyan) 30%, transparent);
+    transform: translateX(6px);
+  }
+
+  .entry time {
+    font-family: var(--font-mono);
+    font-size: 0.76rem;
+    color: var(--color-fog);
+    flex-shrink: 0;
+  }
+
+  .entry-title {
+    flex: 1;
+    font-size: 0.95rem;
+    color: var(--color-mist);
+    transition: color 0.25s ease;
+  }
+
+  .entry a:hover .entry-title {
+    color: #fff;
+  }
+
+  .entry-tags {
+    display: flex;
+    gap: 0.35rem;
+  }
+
+  .entry-tags .pill {
+    font-size: 0.66rem;
+    padding: 0.14rem 0.55rem;
+  }
+
+  .entry-arrow {
+    color: var(--color-fog);
+    opacity: 0;
+    transform: translateX(-6px);
+    transition: all 0.3s ease;
+  }
+
+  .entry a:hover .entry-arrow {
+    opacity: 1;
+    transform: none;
+    color: var(--color-cyan);
+  }
+
+  @media (max-width: 640px) {
+    .entry-tags {
+      display: none;
+    }
+  }
+</style>

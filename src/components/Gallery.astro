@@ -1,0 +1,350 @@
+---
+import { Image, getImage } from 'astro:assets';
+
+interface Shot {
+  src: ImageMetadata;
+  alt?: string;
+  caption?: string;
+}
+
+interface Props {
+  shots: Shot[];
+  columns?: number;
+}
+
+const { shots, columns = 2 } = Astro.props;
+
+// 单图最大渲染宽度（2 倍图用于高分屏）
+const maxWidth = columns >= 3 ? 800 : 1100;
+
+// 为灯箱准备一张大图（WebP，最长边不超过 2000px）
+const fulls = await Promise.all(
+  shots.map(async (s) => {
+    const { src } = await getImage({
+      src: s.src,
+      width: Math.min(s.src.width, 2000),
+      format: 'webp',
+      quality: 82,
+    });
+    return src;
+  }),
+);
+---
+
+<div class="gallery" style={`--cols:${columns}`}>
+  {
+    shots.map((shot, i) => (
+      <figure class="shot reveal" style={`--i:${i}`}>
+        <button
+          type="button"
+          class="shot-btn"
+          data-lightbox-src={fulls[i]}
+          data-lightbox-alt={shot.alt ?? ''}
+          data-lightbox-caption={shot.caption ?? ''}
+          data-lightbox-group={Astro.url.pathname}
+          aria-label={`放大查看：${shot.alt ?? '照片'}`}
+        >
+          <Image
+            src={shot.src}
+            alt={shot.alt ?? ''}
+            layout="constrained"
+            width={maxWidth}
+            sizes={`(max-width: 700px) 92vw, (max-width: 1100px) ${Math.round(92 / columns)}vw, ${Math.round(88 / columns)}vw`}
+            quality={80}
+            loading="lazy"
+            decoding="async"
+          />
+          <span class="shot-zoom" aria-hidden="true">
+            <i class="ri-zoom-in-line"></i>
+          </span>
+        </button>
+        {shot.caption && <figcaption>{shot.caption}</figcaption>}
+      </figure>
+    ))
+  }
+</div>
+
+<!-- 灯箱 -->
+<div class="lightbox" id="lightbox" hidden aria-modal="true" role="dialog" aria-label="图片查看器">
+  <button type="button" class="lb-close" data-lb-close aria-label="关闭">
+    <i class="ri-close-line" aria-hidden="true"></i>
+  </button>
+  <button type="button" class="lb-nav lb-prev" data-lb-prev aria-label="上一张">
+    <i class="ri-arrow-left-s-line" aria-hidden="true"></i>
+  </button>
+  <button type="button" class="lb-nav lb-next" data-lb-next aria-label="下一张">
+    <i class="ri-arrow-right-s-line" aria-hidden="true"></i>
+  </button>
+  <figure class="lb-figure">
+    <img id="lbImage" src="" alt="" />
+    <figcaption id="lbCaption"></figcaption>
+  </figure>
+</div>
+
+<style>
+  .gallery {
+    display: grid;
+    grid-template-columns: repeat(var(--cols), 1fr);
+    gap: 1.1rem;
+    margin: 2rem 0;
+  }
+
+  .shot {
+    margin: 0;
+    position: relative;
+    border-radius: 18px;
+    overflow: hidden;
+    border: 1px solid color-mix(in oklab, #ffffff 8%, transparent);
+    background: var(--color-ink-2);
+  }
+
+  .shot-btn {
+    display: block;
+    width: 100%;
+    padding: 0;
+    border: none;
+    background: none;
+    cursor: zoom-in;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .shot :global(img) {
+    display: block;
+    width: 100%;
+    height: auto;
+    aspect-ratio: 4 / 5;
+    object-fit: cover;
+    transition: transform 0.9s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .shot:hover :global(img) {
+    transform: scale(1.06);
+  }
+
+  .shot-zoom {
+    position: absolute;
+    right: 0.85rem;
+    bottom: 0.85rem;
+    display: grid;
+    place-items: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    color: #05060c;
+    background: linear-gradient(135deg, var(--color-cyan), var(--color-violet));
+    opacity: 0;
+    transform: scale(0.7);
+    transition: all 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .shot:hover .shot-zoom {
+    opacity: 1;
+    transform: none;
+  }
+
+  figcaption {
+    padding: 0.7rem 0.95rem 0.85rem;
+    font-size: 0.8rem;
+    color: var(--color-fog);
+    border-top: 1px solid color-mix(in oklab, #ffffff 6%, transparent);
+  }
+
+  /* ---- 灯箱 ---- */
+  .lightbox {
+    position: fixed;
+    inset: 0;
+    z-index: 200;
+    display: grid;
+    place-items: center;
+    padding: 3rem 5rem;
+    background: color-mix(in oklab, #03040a 92%, transparent);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    animation: lb-in 0.32s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .lightbox[hidden] {
+    display: none;
+  }
+
+  @keyframes lb-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  .lb-figure {
+    margin: 0;
+    max-width: min(1100px, 100%);
+    max-height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.9rem;
+  }
+
+  .lb-figure img {
+    max-width: 100%;
+    max-height: 78vh;
+    object-fit: contain;
+    border-radius: 12px;
+    box-shadow: 0 30px 90px -30px rgba(0, 0, 0, 0.95);
+    animation: lb-pop 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  @keyframes lb-pop {
+    from {
+      transform: scale(0.94);
+      opacity: 0;
+    }
+    to {
+      transform: none;
+      opacity: 1;
+    }
+  }
+
+  .lb-figure figcaption {
+    padding: 0;
+    border: none;
+    font-size: 0.86rem;
+    color: var(--color-mist);
+    text-align: center;
+  }
+
+  .lb-close,
+  .lb-nav {
+    position: absolute;
+    display: grid;
+    place-items: center;
+    width: 46px;
+    height: 46px;
+    border-radius: 50%;
+    border: 1px solid color-mix(in oklab, #ffffff 12%, transparent);
+    background: color-mix(in oklab, #ffffff 6%, transparent);
+    color: var(--color-mist);
+    font-size: 1.35rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+  }
+
+  .lb-close:hover,
+  .lb-nav:hover {
+    color: #05060c;
+    background: linear-gradient(135deg, var(--color-cyan), var(--color-violet));
+    border-color: transparent;
+    transform: scale(1.08);
+  }
+
+  .lb-close {
+    top: 1.4rem;
+    right: 1.4rem;
+  }
+
+  .lb-prev {
+    left: 1.4rem;
+    top: 50%;
+    transform: translateY(-50%);
+  }
+
+  .lb-next {
+    right: 1.4rem;
+    top: 50%;
+    transform: translateY(-50%);
+  }
+
+  .lb-prev:hover {
+    transform: translateY(-50%) scale(1.08);
+  }
+
+  .lb-next:hover {
+    transform: translateY(-50%) scale(1.08);
+  }
+
+  @media (max-width: 640px) {
+    .lightbox {
+      padding: 3.5rem 1rem;
+    }
+    .lb-nav {
+      top: auto;
+      bottom: 1rem;
+    }
+    .lb-prev {
+      left: 25%;
+    }
+    .lb-next {
+      right: 25%;
+    }
+  }
+</style>
+
+<script>
+  function initLightbox() {
+    const box = document.getElementById('lightbox');
+    const img = document.getElementById('lbImage') as HTMLImageElement | null;
+    const cap = document.getElementById('lbCaption');
+    if (!box || !img || !cap) return;
+
+    let group: string[] = [];
+    let captions: string[] = [];
+    let index = 0;
+
+    const show = (i: number) => {
+      if (!group.length) return;
+      index = (i + group.length) % group.length;
+      img.src = group[index];
+      cap.textContent = captions[index] ?? '';
+    };
+
+    const open = (src: string, groupKey: string) => {
+      const buttons = Array.from(
+        document.querySelectorAll<HTMLElement>(`[data-lightbox-group="${groupKey}"]`),
+      );
+      group = buttons.map((b) => b.dataset.lightboxSrc ?? '');
+      captions = buttons.map((b) => b.dataset.lightboxCaption ?? '');
+      const i = buttons.findIndex((b) => b.dataset.lightboxSrc === src);
+      box.hidden = false;
+      document.body.style.overflow = 'hidden';
+      show(i < 0 ? 0 : i);
+    };
+
+    const close = () => {
+      box.hidden = true;
+      document.body.style.overflow = '';
+      img.src = '';
+    };
+
+    if (!(box as HTMLElement).dataset.bound) {
+      (box as HTMLElement).dataset.bound = '1';
+
+      document.addEventListener('click', (e) => {
+        const target = e.target as HTMLElement;
+        const trigger = target.closest<HTMLElement>('[data-lightbox-src]');
+        if (trigger) {
+          open(trigger.dataset.lightboxSrc ?? '', trigger.dataset.lightboxGroup ?? 'default');
+          return;
+        }
+        if (target.closest('[data-lb-close]') || target === box) {
+          close();
+        } else if (target.closest('[data-lb-prev]')) {
+          show(index - 1);
+        } else if (target.closest('[data-lb-next]')) {
+          show(index + 1);
+        }
+      });
+
+      document.addEventListener('keydown', (e) => {
+        if (box.hidden) return;
+        if (e.key === 'Escape') close();
+        if (e.key === 'ArrowLeft') show(index - 1);
+        if (e.key === 'ArrowRight') show(index + 1);
+      });
+    }
+  }
+
+  document.addEventListener('astro:page-load', initLightbox);
+  initLightbox();
+</script>

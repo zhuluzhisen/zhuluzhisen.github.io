@@ -1,0 +1,524 @@
+@import 'tailwindcss';
+
+@source '../src/**/*.{astro,html,js,ts,md,mdx}';
+
+/* ============================================================
+   设计令牌
+   ============================================================ */
+@theme {
+  --color-void: #04050a;
+  --color-ink: #090b13;
+  --color-ink-2: #0f1220;
+  --color-ink-3: #161a2b;
+  --color-mist: #b7bfd4;
+  --color-fog: #737b93;
+
+  --color-cyan: #22d3ee;
+  --color-violet: #a78bfa;
+  --color-rose: #fb7185;
+  --color-amber: #fbbf24;
+  --color-lime: #a3e635;
+
+  --font-display:
+    'Space Grotesk', 'PingFang SC', 'HarmonyOS Sans SC', 'Microsoft YaHei', system-ui, sans-serif;
+  --font-body:
+    'Inter', 'PingFang SC', 'HarmonyOS Sans SC', 'Microsoft YaHei', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Cascadia Code', 'Consolas', ui-monospace, monospace;
+
+  --animate-aurora-a: aurora-a 26s ease-in-out infinite;
+  --animate-aurora-b: aurora-b 32s ease-in-out infinite;
+  --animate-aurora-c: aurora-c 38s ease-in-out infinite;
+  --animate-float-slow: float-slow 9s ease-in-out infinite;
+  --animate-spin-slow: spin 18s linear infinite;
+  --animate-shimmer: shimmer 3.5s linear infinite;
+  --animate-marquee: marquee 38s linear infinite;
+  --animate-blink: blink 1.05s steps(2, start) infinite;
+}
+
+@keyframes aurora-a {
+  0%,
+  100% {
+    transform: translate3d(-6%, -4%, 0) scale(1);
+  }
+  33% {
+    transform: translate3d(8%, 6%, 0) scale(1.18);
+  }
+  66% {
+    transform: translate3d(-3%, 10%, 0) scale(0.94);
+  }
+}
+@keyframes aurora-b {
+  0%,
+  100% {
+    transform: translate3d(8%, 4%, 0) scale(1.1);
+  }
+  50% {
+    transform: translate3d(-10%, -8%, 0) scale(0.9);
+  }
+}
+@keyframes aurora-c {
+  0%,
+  100% {
+    transform: translate3d(0, 8%, 0) scale(0.95);
+  }
+  50% {
+    transform: translate3d(10%, -6%, 0) scale(1.22);
+  }
+}
+@keyframes float-slow {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-14px);
+  }
+}
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+@keyframes marquee {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+@keyframes blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0;
+  }
+}
+
+/* ============================================================
+   基础层
+   ============================================================ */
+@layer base {
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+
+  html {
+    scroll-behavior: smooth;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background-color: var(--color-void);
+    color: var(--color-mist);
+    font-family: var(--font-body);
+    font-size: 15.5px;
+    line-height: 1.75;
+    letter-spacing: 0.01em;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: var(--font-display);
+    color: #fff;
+    font-weight: 700;
+    line-height: 1.25;
+    letter-spacing: -0.02em;
+    margin: 0;
+  }
+
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  ::selection {
+    background: color-mix(in oklab, var(--color-violet) 45%, transparent);
+    color: #fff;
+  }
+
+  /* 滚动条 */
+  ::-webkit-scrollbar {
+    width: 9px;
+    height: 9px;
+  }
+  ::-webkit-scrollbar-track {
+    background: #05060c;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, #2a3050, #1a1f33);
+    border-radius: 99px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(180deg, #4b5590, #2a3050);
+  }
+}
+
+/* ============================================================
+   通用工具类
+   ============================================================ */
+@layer components {
+  .container-x {
+    width: min(1180px, calc(100% - 2.5rem));
+    margin-inline: auto;
+  }
+
+  /* 渐变文字 */
+  .text-gradient {
+    background: linear-gradient(
+      100deg,
+      #ffffff 0%,
+      #c9f2ff 22%,
+      var(--color-cyan) 42%,
+      var(--color-violet) 68%,
+      var(--color-rose) 100%
+    );
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    -webkit-text-fill-color: transparent;
+  }
+
+  /* 玻璃卡片 */
+  .glass {
+    position: relative;
+    background: color-mix(in oklab, var(--color-ink-2) 72%, transparent);
+    backdrop-filter: blur(18px) saturate(140%);
+    -webkit-backdrop-filter: blur(18px) saturate(140%);
+    border: 1px solid color-mix(in oklab, #ffffff 8%, transparent);
+    border-radius: 20px;
+    overflow: hidden;
+  }
+
+  /* 渐变描边（伪元素实现，避免 border-image 兼容问题） */
+  .glass-edge::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 1px;
+    background: linear-gradient(
+      140deg,
+      color-mix(in oklab, var(--color-cyan) 55%, transparent),
+      transparent 35%,
+      transparent 65%,
+      color-mix(in oklab, var(--color-violet) 55%, transparent)
+    );
+    -webkit-mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
+    mask-composite: exclude;
+    pointer-events: none;
+    opacity: 0.65;
+    transition: opacity 0.4s ease;
+  }
+
+  .glass-edge:hover::before {
+    opacity: 1;
+  }
+
+  /* 标签药丸 */
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.3rem 0.85rem;
+    border-radius: 999px;
+    font-size: 0.76rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    border: 1px solid color-mix(in oklab, #ffffff 12%, transparent);
+    background: color-mix(in oklab, #ffffff 4%, transparent);
+    color: var(--color-mist);
+    transition: all 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .pill:hover {
+    border-color: color-mix(in oklab, var(--color-cyan) 60%, transparent);
+    color: #fff;
+    background: color-mix(in oklab, var(--color-cyan) 14%, transparent);
+    transform: translateY(-2px);
+  }
+
+  /* 主按钮 */
+  .btn {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.55rem;
+    padding: 0.78rem 1.6rem;
+    border-radius: 999px;
+    font-weight: 600;
+    font-size: 0.92rem;
+    overflow: hidden;
+    isolation: isolate;
+    transition:
+      transform 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+      box-shadow 0.35s ease;
+  }
+
+  .btn-primary {
+    color: #05060c;
+    background: linear-gradient(120deg, var(--color-cyan), var(--color-violet) 55%, var(--color-rose));
+    box-shadow: 0 8px 30px -10px color-mix(in oklab, var(--color-violet) 80%, transparent);
+  }
+
+  .btn-primary::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background: linear-gradient(120deg, var(--color-rose), var(--color-violet) 55%, var(--color-cyan));
+    opacity: 0;
+    transition: opacity 0.35s ease;
+  }
+
+  .btn-primary:hover {
+    transform: translateY(-3px) scale(1.02);
+    box-shadow: 0 14px 42px -12px color-mix(in oklab, var(--color-cyan) 85%, transparent);
+  }
+
+  .btn-primary:hover::after {
+    opacity: 1;
+  }
+
+  .btn-ghost {
+    color: var(--color-mist);
+    border: 1px solid color-mix(in oklab, #ffffff 14%, transparent);
+    background: color-mix(in oklab, #ffffff 3%, transparent);
+  }
+
+  .btn-ghost:hover {
+    color: #fff;
+    border-color: color-mix(in oklab, var(--color-violet) 60%, transparent);
+    background: color-mix(in oklab, var(--color-violet) 12%, transparent);
+    transform: translateY(-3px);
+  }
+}
+
+/* ============================================================
+   动效
+   ============================================================ */
+@layer utilities {
+  .reveal {
+    opacity: 0;
+    transform: translateY(28px);
+    transition:
+      opacity 0.85s cubic-bezier(0.16, 1, 0.3, 1),
+      transform 0.85s cubic-bezier(0.16, 1, 0.3, 1);
+    will-change: opacity, transform;
+  }
+
+  .reveal.is-visible {
+    opacity: 1;
+    transform: none;
+  }
+
+  /* 尊重用户的减少动效偏好 */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+    .reveal {
+      opacity: 1;
+      transform: none;
+    }
+  }
+}
+
+/* ============================================================
+   Markdown 正文排版
+   ============================================================ */
+.prose-fang {
+  font-size: 1.02rem;
+  line-height: 1.9;
+  color: #c3cadb;
+}
+
+.prose-fang > * + * {
+  margin-top: 1.25em;
+}
+
+.prose-fang h2 {
+  font-size: 1.5rem;
+  margin-top: 2.4em;
+  margin-bottom: 0.8em;
+  padding-left: 0.85rem;
+  border-left: 3px solid var(--color-violet);
+}
+
+.prose-fang h3 {
+  font-size: 1.22rem;
+  margin-top: 2em;
+  margin-bottom: 0.7em;
+  color: #e6eaf5;
+}
+
+.prose-fang a {
+  color: var(--color-cyan);
+  text-decoration: underline;
+  text-decoration-color: color-mix(in oklab, var(--color-cyan) 40%, transparent);
+  text-underline-offset: 4px;
+  transition: all 0.25s ease;
+}
+
+.prose-fang a:hover {
+  color: var(--color-rose);
+  text-decoration-color: var(--color-rose);
+}
+
+.prose-fang ul,
+.prose-fang ol {
+  padding-left: 1.4rem;
+}
+
+.prose-fang li {
+  margin-top: 0.4em;
+}
+
+.prose-fang li::marker {
+  color: var(--color-violet);
+}
+
+.prose-fang blockquote {
+  margin-inline: 0;
+  padding: 0.9rem 1.3rem;
+  border-left: 3px solid var(--color-cyan);
+  border-radius: 0 12px 12px 0;
+  background: color-mix(in oklab, var(--color-cyan) 7%, transparent);
+  color: #d7dded;
+}
+
+.prose-fang blockquote p {
+  margin: 0;
+}
+
+.prose-fang code {
+  font-family: var(--font-mono);
+  font-size: 0.88em;
+  padding: 0.15em 0.45em;
+  border-radius: 6px;
+  background: color-mix(in oklab, var(--color-violet) 16%, transparent);
+  color: #d9c9ff;
+}
+
+.prose-fang pre {
+  padding: 1.1rem 1.3rem;
+  border-radius: 14px;
+  border: 1px solid color-mix(in oklab, #ffffff 8%, transparent);
+  background: #080a12;
+  overflow-x: auto;
+  font-size: 0.88rem;
+}
+
+.prose-fang pre code {
+  background: transparent;
+  padding: 0;
+  color: #cfd6e6;
+}
+
+.prose-fang img {
+  border-radius: 14px;
+  border: 1px solid color-mix(in oklab, #ffffff 8%, transparent);
+  box-shadow: 0 20px 50px -25px rgba(0, 0, 0, 0.9);
+}
+
+.prose-fang hr {
+  border: none;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in oklab, #ffffff 15%, transparent),
+    transparent
+  );
+  margin: 2.6em 0;
+}
+
+.prose-fang table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.92rem;
+}
+
+.prose-fang th,
+.prose-fang td {
+  padding: 0.6rem 0.85rem;
+  border: 1px solid color-mix(in oklab, #ffffff 8%, transparent);
+}
+
+.prose-fang th {
+  background: color-mix(in oklab, #ffffff 4%, transparent);
+  color: #fff;
+}
+
+/* ============================================================
+   浅色模式
+   ============================================================ */
+:root[data-theme='light'] {
+  --color-void: #f4f5fa;
+  --color-ink: #ffffff;
+  --color-ink-2: #ffffff;
+  --color-ink-3: #eef0f8;
+  --color-mist: #4a5268;
+  --color-fog: #737b93;
+}
+
+:root[data-theme='light'] body {
+  background-color: #f4f5fa;
+  color: #4a5268;
+}
+
+:root[data-theme='light'] h1,
+:root[data-theme='light'] h2,
+:root[data-theme='light'] h3,
+:root[data-theme='light'] h4 {
+  color: #10131d;
+}
+
+:root[data-theme='light'] .glass {
+  background: color-mix(in oklab, #ffffff 78%, transparent);
+  border-color: color-mix(in oklab, #0b1020 8%, transparent);
+}
+
+:root[data-theme='light'] .prose-fang {
+  color: #3b4356;
+}
+
+:root[data-theme='light'] .prose-fang pre {
+  background: #141824;
+}
+
+:root[data-theme='light'] .text-gradient {
+  background: linear-gradient(
+    100deg,
+    #0b1020 0%,
+    #0e7490 35%,
+    #6d28d9 70%,
+    #be123c 100%
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+}

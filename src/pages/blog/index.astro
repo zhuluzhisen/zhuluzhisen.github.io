@@ -1,0 +1,226 @@
+---
+import { getCollection } from 'astro:content';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import PostCard from '../../components/PostCard.astro';
+
+const posts = (await getCollection('blog', ({ data }) => !data.draft)).sort(
+  (a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf(),
+);
+
+const allTags = [...new Set(posts.flatMap((p) => p.data.tags))];
+const query = Astro.url.searchParams.get('q')?.trim().toLowerCase() ?? '';
+const tagFilter = Astro.url.searchParams.get('tag')?.trim() ?? '';
+
+const filtered = posts.filter((p) => {
+  const matchTag = !tagFilter || p.data.tags.includes(tagFilter);
+  const matchQ =
+    !query ||
+    p.data.title.toLowerCase().includes(query) ||
+    p.data.description.toLowerCase().includes(query) ||
+    p.data.tags.some((t) => t.toLowerCase().includes(query));
+  return matchTag && matchQ;
+});
+---
+
+<BaseLayout
+  title="文章"
+  description="全部文章列表 · 芳的个人博客"
+>
+  <div class="page container-x">
+    <header class="page-head reveal is-visible">
+      <p class="section-kicker">WRITING</p>
+      <h1 class="page-title">文章</h1>
+      <p class="page-desc">
+        共 {posts.length} 篇 · 按发布时间倒序
+      </p>
+    </header>
+
+    <div class="toolbar reveal is-visible">
+      <label class="search">
+        <i class="ri-search-line" aria-hidden="true"></i>
+        <input id="q" type="search" placeholder="搜索标题、描述或标签…" value={query} />
+      </label>
+
+      <div class="tag-row">
+        <a href="/blog" class={!tagFilter ? 'chip active' : 'chip'}>全部</a>
+        {
+          allTags.map((t) => (
+            <a
+              href={`/blog?tag=${encodeURIComponent(t)}`}
+              class={tagFilter === t ? 'chip active' : 'chip'}
+            >
+              #{t}
+            </a>
+          ))
+        }
+      </div>
+    </div>
+
+    <div id="list" class="grid-2">
+      {
+        filtered.map((post, i) => (
+          <PostCard
+            href={`/blog/${post.id}/`}
+            title={post.data.title}
+            description={post.data.description}
+            pubDate={post.data.pubDate}
+            tags={post.data.tags}
+            cover={post.data.cover ?? post.data.gallery[0]?.src}
+            featured={post.data.featured}
+            index={i}
+          />
+        ))
+      }
+    </div>
+
+    <p id="empty" class="empty" hidden>没有匹配的文章，换个关键词试试。</p>
+  </div>
+</BaseLayout>
+
+<style>
+  .page {
+    padding-top: 3.2rem;
+  }
+
+  .page-head {
+    margin-bottom: 2.2rem;
+  }
+
+  .page-title {
+    font-size: clamp(2.2rem, 5vw, 3.2rem);
+    margin-bottom: 0.5rem;
+  }
+
+  .page-desc {
+    margin: 0;
+    color: var(--color-fog);
+    font-size: 0.9rem;
+  }
+
+  .toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 1rem;
+    justify-content: space-between;
+    margin-bottom: 2rem;
+    padding: 0.9rem 1rem;
+    border-radius: 18px;
+    border: 1px solid color-mix(in oklab, #ffffff 8%, transparent);
+    background: color-mix(in oklab, var(--color-ink-2) 60%, transparent);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+  }
+
+  .search {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.55rem 0.9rem;
+    border-radius: 12px;
+    border: 1px solid color-mix(in oklab, #ffffff 9%, transparent);
+    background: color-mix(in oklab, #ffffff 4%, transparent);
+    min-width: min(320px, 100%);
+    flex: 1 1 240px;
+    transition: border-color 0.3s ease;
+  }
+
+  .search:focus-within {
+    border-color: color-mix(in oklab, var(--color-cyan) 55%, transparent);
+  }
+
+  .search i {
+    font-size: 1.05rem;
+    color: var(--color-fog);
+  }
+
+  .search input {
+    flex: 1;
+    border: none;
+    outline: none;
+    background: transparent;
+    color: var(--color-mist);
+    font-family: inherit;
+    font-size: 0.88rem;
+  }
+
+  .search input::placeholder {
+    color: var(--color-fog);
+  }
+
+  .tag-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+  }
+
+  .chip {
+    padding: 0.32rem 0.75rem;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    color: var(--color-fog);
+    border: 1px solid transparent;
+    transition: all 0.25s ease;
+  }
+
+  .chip:hover {
+    color: #fff;
+    background: color-mix(in oklab, #ffffff 6%, transparent);
+  }
+
+  .chip.active {
+    color: #05060c;
+    background: linear-gradient(120deg, var(--color-cyan), var(--color-violet));
+    font-weight: 600;
+  }
+
+  .grid-2 {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.4rem;
+  }
+
+  .empty {
+    text-align: center;
+    padding: 3rem 0;
+    color: var(--color-fog);
+  }
+
+  @media (max-width: 780px) {
+    .grid-2 {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
+
+<script>
+  function initFilter() {
+    const input = document.getElementById('q') as HTMLInputElement | null;
+    const list = document.getElementById('list');
+    const empty = document.getElementById('empty');
+    if (!input || !list || !empty) return;
+
+    const cards = Array.from(list.querySelectorAll<HTMLElement>('.post-card'));
+
+    const apply = () => {
+      const q = input.value.trim().toLowerCase();
+      let visible = 0;
+      cards.forEach((card) => {
+        const text = (card.textContent ?? '').toLowerCase();
+        const ok = !q || text.includes(q);
+        card.style.display = ok ? '' : 'none';
+        if (ok) visible++;
+      });
+      empty.hidden = visible > 0;
+    };
+
+    if (!input.dataset.bound) {
+      input.dataset.bound = '1';
+      input.addEventListener('input', apply);
+    }
+    apply();
+  }
+
+  document.addEventListener('astro:page-load', initFilter);
+  initFilter();
+</script>

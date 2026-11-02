@@ -1,0 +1,299 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+
+const facts = [
+  { label: '网名', value: '芳' },
+  { label: '常驻', value: '南方 · 靠海' },
+  { label: '喜欢', value: '黄昏的光 · 安静的键盘声' },
+  { label: '设备', value: '相机 / 手机 / 笔电' },
+];
+
+const timeline = [
+  {
+    year: '2023',
+    text: '建了这个博客，最初用的是 Hexo + ayer 主题，存下了第一批照片。',
+  },
+  {
+    year: '2024',
+    text: '工作忙起来了，更新渐渐停下来，但照片一直在拍。',
+  },
+  {
+    year: '2025',
+    text: '摄影的技术在慢慢进步，开始尝试不同题材和风格。',
+  },
+  {
+    year: '2026',
+    text: '博客彻底重建：Astro 7 + Tailwind 4，主题换成极光夜色。',
+  },
+];
+---
+
+<BaseLayout title="关于我" description="关于芳 · 一个爱拍照的人">
+  <div class="page container-x">
+    <header class="page-head reveal is-visible">
+      <p class="section-kicker">ABOUT</p>
+      <h1 class="page-title">关于我</h1>
+      <p class="page-desc">你好，我是芳，一个喜欢拍照和折腾的人。</p>
+    </header>
+
+    <div class="grid-main">
+      <section class="card glass glass-edge reveal is-visible">
+        <div class="avatar-row">
+          <div class="avatar">
+            <span>芳</span>
+          </div>
+          <div class="avatar-text">
+            <h2>Hi, 我是芳</h2>
+            <p>
+              喜欢在傍晚出门拍一张照片，喜欢把当下的感觉写成文字。
+              这个空间用来存放那些照片和碎碎念 —— 不追求多，只追求真。
+            </p>
+          </div>
+        </div>
+
+        <dl class="facts">
+          {
+            facts.map((f) => (
+              <div class="fact">
+                <dt>{f.label}</dt>
+                <dd>{f.value}</dd>
+              </div>
+            ))
+          }
+        </dl>
+      </section>
+
+      <section class="card glass glass-edge reveal is-visible">
+        <h2 class="card-title">时间线</h2>
+        <ul class="tl">
+          {
+            timeline.map((t, i) => (
+              <li style={`--i:${i}`}>
+                <span class="tl-year">{t.year}</span>
+                <p>{t.text}</p>
+              </li>
+            ))
+          }
+        </ul>
+      </section>
+    </div>
+
+    <section class="card glass glass-edge reveal is-visible contact">
+      <h2 class="card-title">找到我</h2>
+      <p class="contact-desc">欢迎交流，摄影约拍、技术闲聊都欢迎。</p>
+      <div class="contact-list">
+        <a href="http://shenyu-vip.lofter.com" target="_blank" rel="noopener noreferrer" class="contact-item">
+          <i class="ri-image-line" aria-hidden="true"></i>
+          <span>摄影 · LOFTER</span>
+          <i class="ri-arrow-right-up-line" aria-hidden="true"></i>
+        </a>
+        <a href="/friends" class="contact-item">
+          <i class="ri-group-line" aria-hidden="true"></i>
+          <span>友链</span>
+          <i class="ri-arrow-right-line" aria-hidden="true"></i>
+        </a>
+        <a href="/blog" class="contact-item">
+          <i class="ri-article-line" aria-hidden="true"></i>
+          <span>全部文章</span>
+          <i class="ri-arrow-right-line" aria-hidden="true"></i>
+        </a>
+      </div>
+    </section>
+  </div>
+</BaseLayout>
+
+<style>
+  .page {
+    padding-top: 3.2rem;
+  }
+
+  .page-head {
+    margin-bottom: 2.4rem;
+  }
+
+  .page-title {
+    font-size: clamp(2.2rem, 5vw, 3.2rem);
+    margin-bottom: 0.5rem;
+  }
+
+  .page-desc {
+    margin: 0;
+    color: var(--color-fog);
+    font-size: 0.95rem;
+  }
+
+  .grid-main {
+    display: grid;
+    grid-template-columns: 1.15fr 0.85fr;
+    gap: 1.4rem;
+    margin-bottom: 1.4rem;
+  }
+
+  .card {
+    padding: 1.9rem;
+    border-radius: 22px;
+  }
+
+  .card-title {
+    font-size: 1.15rem;
+    margin-bottom: 1.2rem;
+  }
+
+  .avatar-row {
+    display: flex;
+    gap: 1.2rem;
+    align-items: flex-start;
+    margin-bottom: 1.6rem;
+  }
+
+  .avatar {
+    flex-shrink: 0;
+    display: grid;
+    place-items: center;
+    width: 72px;
+    height: 72px;
+    border-radius: 22px;
+    background: linear-gradient(140deg, var(--color-cyan), var(--color-violet) 55%, var(--color-rose));
+    box-shadow: 0 16px 40px -18px color-mix(in oklab, var(--color-violet) 90%, transparent);
+  }
+
+  .avatar span {
+    font-family: var(--font-display);
+    font-size: 1.9rem;
+    font-weight: 700;
+    color: #05060c;
+  }
+
+  .avatar-text h2 {
+    font-size: 1.3rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .avatar-text p {
+    margin: 0;
+    font-size: 0.9rem;
+    line-height: 1.85;
+    color: var(--color-fog);
+  }
+
+  .facts {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.9rem;
+    margin: 0;
+  }
+
+  .fact {
+    padding: 0.85rem 1rem;
+    border-radius: 14px;
+    background: color-mix(in oklab, #ffffff 4%, transparent);
+    border: 1px solid color-mix(in oklab, #ffffff 7%, transparent);
+  }
+
+  .fact dt {
+    font-size: 0.68rem;
+    letter-spacing: 0.18em;
+    color: var(--color-fog);
+    margin-bottom: 0.3rem;
+  }
+
+  .fact dd {
+    margin: 0;
+    font-size: 0.9rem;
+    color: var(--color-mist);
+  }
+
+  .tl {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .tl li {
+    display: flex;
+    gap: 0.9rem;
+    align-items: flex-start;
+  }
+
+  .tl-year {
+    flex-shrink: 0;
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    color: var(--color-cyan);
+    padding-top: 0.15rem;
+  }
+
+  .tl p {
+    margin: 0;
+    font-size: 0.86rem;
+    line-height: 1.75;
+    color: var(--color-fog);
+  }
+
+  .contact {
+    margin-top: 0;
+  }
+
+  .contact-desc {
+    margin: -0.4rem 0 1.2rem;
+    font-size: 0.88rem;
+    color: var(--color-fog);
+  }
+
+  .contact-list {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.8rem;
+  }
+
+  .contact-item {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.85rem 1rem;
+    border-radius: 14px;
+    border: 1px solid color-mix(in oklab, #ffffff 8%, transparent);
+    background: color-mix(in oklab, #ffffff 3%, transparent);
+    font-size: 0.85rem;
+    color: var(--color-mist);
+    transition: all 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .contact-item:hover {
+    color: #fff;
+    border-color: color-mix(in oklab, var(--color-cyan) 50%, transparent);
+    background: color-mix(in oklab, var(--color-cyan) 10%, transparent);
+    transform: translateY(-3px);
+  }
+
+  .contact-item i:first-child {
+    font-size: 1.1rem;
+    color: var(--color-cyan);
+  }
+
+  .contact-item i:last-child {
+    margin-left: auto;
+    opacity: 0.55;
+  }
+
+  @media (max-width: 900px) {
+    .grid-main {
+      grid-template-columns: 1fr;
+    }
+    .contact-list {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  @media (max-width: 520px) {
+    .facts {
+      grid-template-columns: 1fr;
+    }
+    .avatar-row {
+      flex-direction: column;
+    }
+  }
+</style>

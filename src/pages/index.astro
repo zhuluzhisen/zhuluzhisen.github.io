@@ -1,0 +1,553 @@
+---
+import { getCollection } from 'astro:content';
+import BaseLayout from '../layouts/BaseLayout.astro';
+import PostCard from '../components/PostCard.astro';
+import Marquee from '../components/Marquee.astro';
+import Gallery from '../components/Gallery.astro';
+
+import Fang1 from '../assets/images/Fang1.jpg';
+import Fang2 from '../assets/images/Fang2.jpg';
+import Fang3 from '../assets/images/Fang3.JPG';
+import Fang4 from '../assets/images/Fang4.jpg';
+
+const allPosts = (await getCollection('blog', ({ data }) => !data.draft)).sort(
+  (a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf(),
+);
+
+const latest = allPosts.slice(0, 3);
+const featured = allPosts.find((p) => p.data.featured) ?? allPosts[0];
+
+const shots = [
+  { src: Fang1, alt: '我最喜欢的一张', caption: '我最喜欢的一张' },
+  { src: Fang2, alt: '看着就很开心', caption: '看着就很开心' },
+  { src: Fang3, alt: '这张我也很喜欢', caption: '这张我也很喜欢' },
+  { src: Fang4, alt: '很Q', caption: '很Q' },
+];
+
+const tags = ['摄影', '旅行', '生活', '随笔', '公告', '光影'];
+
+const stats = [
+  { value: String(allPosts.length).padStart(2, '0'), label: '篇文章' },
+  { value: String(shots.length).padStart(2, '0'), label: '张照片' },
+  { value: 'Astro 7', label: '框架版本' },
+];
+---
+
+<BaseLayout>
+  <!-- ============ HERO ============ -->
+  <section class="hero">
+    <div class="container-x hero-inner">
+      <div class="hero-copy">
+        <p class="eyebrow reveal">
+          <span class="eyebrow-dot"></span>
+          HELLO, THIS IS FANG
+        </p>
+
+        <h1 class="hero-title reveal" style="--i:1">
+          <span class="line">记录光影，</span>
+          <span class="line text-gradient">也记录生活</span>
+        </h1>
+
+        <p class="hero-desc reveal" style="--i:2">
+          <span id="typewriter" class="tw"></span><span class="caret">▊</span>
+        </p>
+
+        <div class="hero-actions reveal" style="--i:3">
+          <a href="/blog" class="btn btn-primary">
+            <i class="ri-quill-pen-line" aria-hidden="true"></i>
+            开始阅读
+          </a>
+          <a href="/gallery" class="btn btn-ghost">
+            <i class="ri-image-2-line" aria-hidden="true"></i>
+            看看相册
+          </a>
+        </div>
+
+        <dl class="stats reveal" style="--i:4">
+          {
+            stats.map((s) => (
+              <div class="stat">
+                <dt>{s.value}</dt>
+                <dd>{s.label}</dd>
+              </div>
+            ))
+          }
+        </dl>
+      </div>
+
+      <div class="hero-visual reveal is-visible" style="--i:2">
+        <div class="orb-wrap">
+          <div class="orb-glow" aria-hidden="true"></div>
+          <div class="orb">
+            <span class="orb-text">芳</span>
+          </div>
+          <span class="orb-ring ring-1" aria-hidden="true"></span>
+          <span class="orb-ring ring-2" aria-hidden="true"></span>
+        </div>
+        <div class="float-card fc-1 glass">
+          <i class="ri-camera-line" aria-hidden="true"></i>
+          <span>Photography</span>
+        </div>
+        <div class="float-card fc-2 glass">
+          <i class="ri-code-box-line" aria-hidden="true"></i>
+          <span>Astro 7</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <Marquee items={tags} speed={42} />
+
+  <!-- ============ 最新文章 ============ -->
+  <section class="section container-x">
+    <div class="section-head reveal">
+      <div>
+        <p class="section-kicker">LATEST POSTS</p>
+        <h2 class="section-title">最新文章</h2>
+      </div>
+      <a href="/blog" class="section-more">
+        全部文章
+        <i class="ri-arrow-right-line" aria-hidden="true"></i>
+      </a>
+    </div>
+
+    <div class="grid-3">
+      {
+        latest.map((post, i) => (
+          <PostCard
+            href={`/blog/${post.id}/`}
+            title={post.data.title}
+            description={post.data.description}
+            pubDate={post.data.pubDate}
+            tags={post.data.tags}
+            cover={post.data.cover ?? post.data.gallery[0]?.src}
+            featured={post.data.featured}
+            index={i}
+          />
+        ))
+      }
+    </div>
+  </section>
+
+  <!-- ============ 精选相册 ============ -->
+  {
+    featured && (
+      <section class="section container-x">
+        <div class="section-head reveal">
+          <div>
+            <p class="section-kicker">GALLERY</p>
+            <h2 class="section-title">精选相册</h2>
+          </div>
+          <a href="/gallery" class="section-more">
+            全部照片
+            <i class="ri-arrow-right-line" aria-hidden="true" />
+          </a>
+        </div>
+
+        <div class="gallery-panel glass glass-edge reveal">
+          <Gallery shots={shots} columns={2} />
+        </div>
+      </section>
+    )
+  }
+
+  <!-- ============ CTA ============ -->
+  <section class="section container-x">
+    <div class="cta glass glass-edge reveal">
+      <div class="cta-inner">
+        <p class="section-kicker">KEEP IN TOUCH</p>
+        <h2 class="cta-title">想聊聊？随时来找我</h2>
+        <p class="cta-desc">
+          摄影约拍、技术交流、或者只是想打个招呼 —— 都欢迎。
+        </p>
+        <div class="cta-actions">
+          <a href="/friends" class="btn btn-primary">
+            <i class="ri-group-line" aria-hidden="true"></i>
+            友链
+          </a>
+          <a href="/about" class="btn btn-ghost">
+            <i class="ri-user-smile-line" aria-hidden="true"></i>
+            关于我
+          </a>
+        </div>
+      </div>
+    </div>
+  </section>
+</BaseLayout>
+
+<style>
+  /* ============ HERO ============ */
+  .hero {
+    position: relative;
+    padding: 5.5rem 0 4.5rem;
+  }
+
+  .hero-inner {
+    display: grid;
+    grid-template-columns: 1.15fr 0.85fr;
+    align-items: center;
+    gap: 3.5rem;
+  }
+
+  .eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.6rem;
+    margin: 0 0 1.4rem;
+    padding: 0.35rem 0.9rem;
+    border-radius: 999px;
+    border: 1px solid color-mix(in oklab, var(--color-cyan) 28%, transparent);
+    background: color-mix(in oklab, var(--color-cyan) 8%, transparent);
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.22em;
+    color: var(--color-cyan);
+  }
+
+  .eyebrow-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--color-cyan);
+    box-shadow: 0 0 10px var(--color-cyan);
+    animation: pulse-dot 2.4s ease-in-out infinite;
+  }
+
+  @keyframes pulse-dot {
+    0%,
+    100% {
+      transform: scale(1);
+      opacity: 1;
+    }
+    50% {
+      transform: scale(1.5);
+      opacity: 0.5;
+    }
+  }
+
+  .hero-title {
+    font-size: clamp(2.6rem, 6.4vw, 4.6rem);
+    line-height: 1.12;
+    margin-bottom: 1.3rem;
+  }
+
+  .hero-title .line {
+    display: block;
+  }
+
+  .hero-desc {
+    margin: 0 0 2rem;
+    font-size: 1.02rem;
+    line-height: 1.85;
+    color: var(--color-fog);
+    min-height: 1.85em;
+  }
+
+  .caret {
+    color: var(--color-cyan);
+    animation: var(--animate-blink);
+    margin-left: 2px;
+  }
+
+  .hero-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.85rem;
+    margin-bottom: 2.6rem;
+  }
+
+  .stats {
+    display: flex;
+    gap: 2.2rem;
+    margin: 0;
+  }
+
+  .stat dt {
+    font-family: var(--font-display);
+    font-size: 1.7rem;
+    font-weight: 700;
+    color: #fff;
+    line-height: 1.1;
+  }
+
+  .stat dd {
+    margin: 0.2rem 0 0;
+    font-size: 0.74rem;
+    letter-spacing: 0.14em;
+    color: var(--color-fog);
+  }
+
+  /* ---- 视觉球 ---- */
+  .hero-visual {
+    position: relative;
+    display: grid;
+    place-items: center;
+    min-height: 380px;
+  }
+
+  .orb-wrap {
+    position: relative;
+    display: grid;
+    place-items: center;
+    width: min(320px, 72vw);
+    aspect-ratio: 1;
+  }
+
+  .orb-glow {
+    position: absolute;
+    inset: -18%;
+    border-radius: 50%;
+    background: conic-gradient(
+      from 0deg,
+      var(--color-cyan),
+      var(--color-violet),
+      var(--color-rose),
+      var(--color-lime),
+      var(--color-cyan)
+    );
+    filter: blur(52px);
+    opacity: 0.45;
+    animation: var(--animate-spin-slow);
+  }
+
+  .orb {
+    position: relative;
+    display: grid;
+    place-items: center;
+    width: 68%;
+    aspect-ratio: 1;
+    border-radius: 50%;
+    background:
+      radial-gradient(circle at 32% 26%, rgba(255, 255, 255, 0.28), transparent 48%),
+      linear-gradient(150deg, #131a30, #070911 70%);
+    border: 1px solid color-mix(in oklab, #ffffff 14%, transparent);
+    box-shadow:
+      inset 0 0 60px rgba(0, 0, 0, 0.75),
+      0 30px 80px -30px rgba(0, 0, 0, 0.9);
+    animation: var(--animate-float-slow);
+  }
+
+  .orb-text {
+    font-family: var(--font-display);
+    font-size: clamp(3.2rem, 8vw, 5rem);
+    font-weight: 700;
+    background: linear-gradient(140deg, #fff, var(--color-cyan) 55%, var(--color-violet));
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .orb-ring {
+    position: absolute;
+    border-radius: 50%;
+    border: 1px solid color-mix(in oklab, #ffffff 10%, transparent);
+  }
+
+  .ring-1 {
+    inset: 4%;
+    animation: var(--animate-spin-slow);
+    border-top-color: var(--color-cyan);
+    border-right-color: transparent;
+  }
+
+  .ring-2 {
+    inset: -8%;
+    animation: var(--animate-spin-slow) reverse;
+    animation-duration: 26s;
+    border-bottom-color: var(--color-rose);
+    border-left-color: transparent;
+  }
+
+  .float-card {
+    position: absolute;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.55rem 0.95rem;
+    border-radius: 14px;
+    font-size: 0.76rem;
+    font-family: var(--font-mono);
+    letter-spacing: 0.06em;
+    color: var(--color-mist);
+    box-shadow: 0 18px 40px -22px rgba(0, 0, 0, 0.95);
+  }
+
+  .float-card i {
+    font-size: 1rem;
+    color: var(--color-cyan);
+  }
+
+  .fc-1 {
+    top: 8%;
+    left: -6%;
+    animation: var(--animate-float-slow);
+  }
+
+  .fc-2 {
+    bottom: 10%;
+    right: -6%;
+    animation: var(--animate-float-slow);
+    animation-delay: -4s;
+  }
+
+  .fc-2 i {
+    color: var(--color-rose);
+  }
+
+  /* ============ 通用 section ============ */
+  .section {
+    padding: 4.5rem 0 0;
+  }
+
+  .section-head {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+  }
+
+  .section-kicker {
+    margin: 0 0 0.4rem;
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    letter-spacing: 0.26em;
+    color: var(--color-cyan);
+  }
+
+  .section-title {
+    font-size: clamp(1.5rem, 3.4vw, 2.1rem);
+  }
+
+  .section-more {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.85rem;
+    color: var(--color-fog);
+    padding-bottom: 0.25rem;
+    transition: color 0.25s ease;
+  }
+
+  .section-more:hover {
+    color: var(--color-cyan);
+  }
+
+  .grid-3 {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.4rem;
+  }
+
+  .gallery-panel {
+    padding: 1.4rem;
+    border-radius: 26px;
+  }
+
+  /* ============ CTA ============ */
+  .cta {
+    border-radius: 28px;
+    padding: 3.5rem 2rem;
+    text-align: center;
+    background:
+      radial-gradient(ellipse 70% 130% at 50% 0%, color-mix(in oklab, var(--color-violet) 18%, transparent), transparent),
+      color-mix(in oklab, var(--color-ink-2) 72%, transparent);
+  }
+
+  .cta-title {
+    font-size: clamp(1.6rem, 4vw, 2.4rem);
+    margin-bottom: 0.7rem;
+  }
+
+  .cta-desc {
+    margin: 0 auto 1.8rem;
+    max-width: 44ch;
+    color: var(--color-fog);
+    font-size: 0.92rem;
+  }
+
+  .cta-actions {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 0.8rem;
+  }
+
+  /* ============ 响应式 ============ */
+  @media (max-width: 980px) {
+    .hero-inner {
+      grid-template-columns: 1fr;
+      gap: 2.5rem;
+    }
+    .hero-visual {
+      order: -1;
+      min-height: 300px;
+    }
+    .grid-3 {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+
+  @media (max-width: 680px) {
+    .hero {
+      padding: 3.2rem 0 3rem;
+    }
+    .grid-3 {
+      grid-template-columns: 1fr;
+    }
+    .stats {
+      gap: 1.5rem;
+    }
+    .fc-1 {
+      left: -2%;
+    }
+    .fc-2 {
+      right: -2%;
+    }
+    .section {
+      padding-top: 3.2rem;
+    }
+  }
+</style>
+
+<script>
+  // 打字机效果
+  function initTypewriter() {
+    const el = document.getElementById('typewriter');
+    if (!el || el.dataset.done) return;
+
+    const phrases = [
+      '这里存放着我的照片、文章和一些碎碎念。',
+      '喜欢黄昏时的光，也喜欢深夜安静的键盘声。',
+      'Astro 7 驱动的极光夜色主题，伸手可触。',
+      '愿你在这里找到一点安静的角落。',
+    ];
+
+    let p = 0;
+    let i = 0;
+    let deleting = false;
+
+    const tick = () => {
+      const text = phrases[p];
+      i += deleting ? -1 : 1;
+      el.textContent = text.slice(0, i);
+
+      let delay = deleting ? 38 : 72;
+      if (!deleting && i === text.length) {
+        delay = 1900;
+        deleting = true;
+      } else if (deleting && i === 0) {
+        deleting = false;
+        p = (p + 1) % phrases.length;
+        delay = 420;
+      }
+      el.dataset.done = '1';
+      window.setTimeout(tick, delay);
+    };
+
+    tick();
+  }
+
+  document.addEventListener('astro:page-load', initTypewriter);
+  initTypewriter();
+</script>

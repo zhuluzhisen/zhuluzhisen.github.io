@@ -1,0 +1,75 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+---
+
+<BaseLayout title="404" description="页面走丢了">
+  <div class="page container-x">
+    <div class="err glass glass-edge reveal is-visible">
+      <p class="code">404</p>
+      <h1 class="title">这一页走丢了</h1>
+      <p class="desc">
+        你要找的内容可能已经被移动，或者从来没有存在过。<br />
+        不如回首页看看，或者去归档里翻翻？
+      </p>
+      <div class="actions">
+        <a href="/" class="btn btn-primary">
+          <i class="ri-home-heart-line" aria-hidden="true"></i>
+          回到首页
+        </a>
+        <a href="/archives" class="btn btn-ghost">
+          <i class="ri-archive-line" aria-hidden="true"></i>
+          去归档
+        </a>
+      </div>
+    </div>
+  </div>
+</BaseLayout>
+
+<style>
+  .page {
+    padding-top: 5rem;
+    display: grid;
+    place-items: center;
+    min-height: 70vh;
+  }
+
+  .err {
+    max-width: 560px;
+    width: 100%;
+    padding: 3.5rem 2.5rem;
+    border-radius: 28px;
+    text-align: center;
+  }
+
+  .code {
+    margin: 0 0 0.6rem;
+    font-family: var(--font-display);
+    font-size: clamp(4.5rem, 14vw, 8rem);
+    font-weight: 700;
+    line-height: 1;
+    letter-spacing: -0.04em;
+    background: linear-gradient(120deg, var(--color-cyan), var(--color-violet) 55%, var(--color-rose));
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .title {
+    font-size: 1.6rem;
+    margin-bottom: 0.8rem;
+  }
+
+  .desc {
+    margin: 0 0 1.8rem;
+    font-size: 0.92rem;
+    line-height: 1.85;
+    color: var(--color-fog);
+  }
+
+  .actions {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 0.8rem;
+  }
+</style>

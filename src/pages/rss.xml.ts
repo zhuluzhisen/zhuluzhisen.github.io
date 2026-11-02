@@ -8,7 +8,7 @@ export async function GET(context: APIContext) {
   );
 
   return rss({
-    title: '芳 · FANG\'S SPACE',
+    title: '森 · SEN\'S SPACE',
     description: '记录光影，也记录生活。',
     site: context.site ?? 'https://zhuluzhisen.github.io',
     items: posts.map((post) => ({

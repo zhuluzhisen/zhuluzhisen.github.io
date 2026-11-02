@@ -15,7 +15,7 @@ interface Props {
 }
 
 const {
-  title = '芳 · FANG\'S SPACE',
+  title = '森 · SEN\'S SPACE',
   description = '记录光影，也记录生活。一个用 Astro 7 + Tailwind 4 重建的个人空间。',
   image = '/og.jpg',
   article = false,
@@ -24,7 +24,7 @@ const {
 } = Astro.props;
 
 const canonical = new URL(Astro.url.pathname, Astro.site ?? 'https://zhuluzhisen.github.io');
-const fullTitle = title.includes('芳') ? title : `${title} · 芳`;
+const fullTitle = title.includes('森') ? title : `${title} · 森`;
 ---
 
 <!doctype html>
@@ -52,7 +52,7 @@ const fullTitle = title.includes('芳') ? title : `${title} · 芳`;
     <meta name="twitter:description" content={description} />
     {publishedTime && <meta property="article:published_time" content={publishedTime.toISOString()} />}
 
-    <link rel="alternate" type="application/rss+xml" title="芳 · RSS" href="/rss.xml" />
+    <link rel="alternate" type="application/rss+xml" title="森 · RSS" href="/rss.xml" />
 
     <!-- 主题预置，避免闪白 -->
     <script is:inline>

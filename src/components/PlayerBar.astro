@@ -19,6 +19,43 @@
       <i class="ri-close-line" aria-hidden="true"></i>
     </button>
 
+    <!-- 云同步：未登录 -->
+    <section class="pb-cloud" id="pbCloudSignIn" hidden>
+      <div class="pb-cloud-card">
+        <p class="pb-kicker">CLOUD SYNC</p>
+        <h2 class="pb-title">登录后自动同步</h2>
+        <p class="pb-desc">
+          用 GitHub 账号登录，战绩、收藏、阅读进度会存到云端。
+          换电脑、换浏览器，用同一个账号登录就接得上 —— 目前还不支持跨设备，正是因为缺这一步。
+        </p>
+        <button class="pb-btn pb-gh" id="pbSignIn" type="button">
+          <i class="ri-github-fill" aria-hidden="true"></i>
+          用 GitHub 登录
+        </button>
+        <p class="pb-fine">
+          只读取你的公开用户名和头像，不会碰你的仓库。不想登录也可以继续用本地档案，功能完全不受影响。
+        </p>
+      </div>
+    </section>
+
+    <!-- 云同步：已登录 -->
+    <section class="pb-cloud" id="pbCloudUser" hidden>
+      <div class="pb-cloud-card">
+        <div class="pb-cloud-head">
+          <img class="pb-avatar" id="pbAvatar" alt="" hidden />
+          <div class="pb-cloud-id">
+            <p class="pb-cloud-name" id="pbCloudName">—</p>
+            <p class="pb-cloud-state" id="pbCloudState">已连接</p>
+          </div>
+          <button class="pb-btn pb-mini" id="pbSyncNow" type="button">
+            <i class="ri-refresh-line" aria-hidden="true"></i>
+          </button>
+        </div>
+        <p class="pb-cloud-err" id="pbCloudErr" hidden></p>
+        <button class="pb-link" id="pbSignOut" type="button">退出登录</button>
+      </div>
+    </section>
+
     <!-- 建立档案 -->
     <section class="pb-panel" id="pbPanelSetup" hidden>
       <p class="pb-kicker">NEW PROFILE</p>
@@ -57,7 +94,7 @@
 
     <!-- 已解锁 -->
     <section class="pb-panel" id="pbPanelManage" hidden>
-      <p class="pb-kicker">UNLOCKED</p>
+      <p class="pb-kicker" id="pbManageKicker">UNLOCKED</p>
       <h2 class="pb-title" id="pbManageName">我的档案</h2>
       <dl class="pb-meta">
         <div><dt>建立于</dt><dd id="pbCreated">—</dd></div>
@@ -81,7 +118,7 @@
       </div>
       <input id="pbFile" type="file" accept="application/json,.json" hidden />
 
-      <p class="pb-fine">
+      <p class="pb-fine" id="pbManageTip">
         换设备时用「导出」下载一个 JSON，在新设备上建立档案后「导入」，记录就带过去了 ——
         这是目前不花钱也能搬家存档的办法。
       </p>
@@ -97,16 +134,6 @@
   import { store, cryptoReady } from '../lib/save-store';
 
   const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T | null;
-  const chip = $<HTMLButtonElement>('pbChip');
-  const dot = $('pbDot');
-  const label = $('pbLabel');
-  const dialog = $<HTMLDialogElement>('pbDialog');
-
-  const panels = {
-    setup: $('pbPanelSetup'),
-    unlock: $('pbPanelUnlock'),
-    manage: $('pbPanelManage'),
-  };
 
   function toast(msg: string) {
     const el = $('pbToast');
@@ -137,171 +164,313 @@
     return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
   }
 
+  function fmtAgo(ts: number) {
+    const diff = Date.now() - ts;
+    if (diff < 30_000) return '刚刚';
+    if (diff < 3_600_000) return `${Math.floor(diff / 60_000)} 分钟前`;
+    if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)} 小时前`;
+    return fmtDate(ts).slice(5, 16);
+  }
+
+  function syncLabel(): string {
+    switch (store.syncPhase) {
+      case 'syncing':
+        return '同步中…';
+      case 'error':
+        return '同步没成功';
+      case 'synced':
+        return store.lastSyncAt ? `已同步 · ${fmtAgo(store.lastSyncAt)}` : '已同步';
+      default:
+        return '已连接';
+    }
+  }
+
   async function render() {
     await store.whenReady();
-    const s = store.state;
 
-    if (dot) dot.className = `pb-dot pb-dot--${s}`;
+    const s = store.state;
+    const signedIn = !!store.cloudUser;
+    const chip = $<HTMLButtonElement>('pbChip');
+    const dot = $('pbDot');
+    const label = $('pbLabel');
+
+    if (dot) dot.className = `pb-dot pb-dot--${signedIn ? 'cloud' : s}`;
     if (label) {
-      label.textContent =
-        s === 'unlocked' ? store.profileName || '我的档案' : s === 'locked' ? '档案已锁定' : '游客模式';
+      label.textContent = signedIn
+        ? store.profileName || store.cloudUser?.name || '已登录'
+        : s === 'unlocked'
+          ? store.profileName || '我的档案'
+          : s === 'locked'
+            ? '档案已锁定'
+            : '游客模式';
     }
     if (chip) {
-      chip.dataset.state = s;
+      chip.dataset.state = signedIn ? 'cloud' : s;
       chip.setAttribute(
         'title',
-        s === 'unlocked'
-          ? '档案已解锁，记录正在加密保存'
-          : s === 'locked'
-            ? '档案已锁定，点击解锁'
-            : '当前是游客模式，记录只明文存在本机',
+        signedIn
+          ? `已登录${store.cloudUser?.name ? ' · ' + store.cloudUser.name : ''}，记录会自动同步到云端`
+          : s === 'unlocked'
+            ? '档案已解锁，记录正在加密保存'
+            : s === 'locked'
+              ? '档案已锁定，点击解锁'
+              : '当前是游客模式，记录只明文存在本机',
       );
     }
 
-    const show = { setup: s === 'empty', unlock: s === 'locked', manage: s === 'unlocked' };
+    /* ---- 云同步区块 ---- */
+    const cloudOn = store.cloudAvailable;
+    const signInBox = $('pbCloudSignIn');
+    const userBox = $('pbCloudUser');
+    if (signInBox) signInBox.hidden = !cloudOn || signedIn;
+    if (userBox) userBox.hidden = !cloudOn || !signedIn;
+
+    if (cloudOn && signedIn) {
+      const nameEl = $('pbCloudName');
+      if (nameEl) nameEl.textContent = store.cloudUser?.name || store.cloudUser?.email || '已登录';
+      const stateEl = $('pbCloudState');
+      if (stateEl) {
+        stateEl.textContent = syncLabel();
+        stateEl.dataset.phase = store.syncPhase;
+      }
+      const avatar = $<HTMLImageElement>('pbAvatar');
+      if (avatar) {
+        const src = store.cloudUser?.avatar || '';
+        if (src) {
+          avatar.src = src;
+          avatar.hidden = false;
+          avatar.onerror = () => {
+            avatar.hidden = true;
+          };
+        } else {
+          avatar.hidden = true;
+        }
+      }
+      const errEl = $('pbCloudErr');
+      if (errEl) {
+        const msg = store.syncPhase === 'error' ? store.syncError : '';
+        errEl.textContent = msg;
+        errEl.hidden = !msg;
+      }
+    }
+
+    /* ---- 面板切换 ---- */
+    const panels = {
+      setup: $('pbPanelSetup'),
+      unlock: $('pbPanelUnlock'),
+      manage: $('pbPanelManage'),
+    };
+    const show = {
+      setup: !signedIn && s === 'empty',
+      unlock: !signedIn && s === 'locked',
+      manage: signedIn || s === 'unlocked',
+    };
     (Object.keys(panels) as (keyof typeof panels)[]).forEach((k) => {
       const el = panels[k];
       if (el) el.hidden = !show[k];
     });
 
-    if (s === 'unlocked') {
+    if (show.manage) {
       const data = await store.all();
       const nameEl = $('pbManageName');
-      if (nameEl) nameEl.textContent = data?.profile?.name || '我的档案';
+      if (nameEl) nameEl.textContent = data?.profile?.name || (signedIn ? '云端档案' : '我的档案');
       const created = $('pbCreated');
       if (created) created.textContent = fmtDate(data?.profile?.createdAt);
       const count = Object.keys(data?.games || {}).length;
       const cntEl = $('pbCount');
       if (cntEl) cntEl.textContent = `${count} 个游戏`;
       const usage = $('pbUsage');
-      if (usage) usage.textContent = `${Math.max(1, Math.round(store.usageBytes() / 1024))} KB`;
+      if (usage) {
+        usage.textContent = signedIn ? '云端' : `${Math.max(1, Math.round(store.usageBytes() / 1024))} KB`;
+      }
+      // 登录后「锁定」没意义了，换成退出登录
+      const lockBtn = $('pbLock');
+      if (lockBtn) lockBtn.hidden = signedIn;
+      const kicker = $('pbManageKicker');
+      if (kicker) kicker.textContent = signedIn ? 'CLOUD PROFILE' : 'UNLOCKED';
+      const tip = $('pbManageTip');
+      if (tip) {
+        tip.innerHTML = signedIn
+          ? '战绩已经自动同步到云端，换设备登录同一个账号就能接上。「导出」可以作为一份离线备份。'
+          : '换设备时用「导出」下载一个 JSON，在新设备上建立档案后「导入」，记录就带过去了 —— 这是目前不花钱也能搬家存档的办法。';
+      }
     }
   }
 
   function openDialog() {
     error(null);
     render();
+    const dialog = $<HTMLDialogElement>('pbDialog');
     if (dialog && !dialog.open) dialog.showModal();
   }
 
-  /* ---- 事件绑定 ---- */
-  chip?.addEventListener('click', openDialog);
-  $('pbClose')?.addEventListener('click', () => dialog?.close());
+  /* ---- 初始化（Astro 的页面切换会换掉 DOM，所以按元素标记幂等重绑） ---- */
+  function init() {
+    const chip = $<HTMLButtonElement>('pbChip');
+    if (!chip) return;
 
-  dialog?.addEventListener('click', (e) => {
-    if (e.target === dialog) dialog.close();
-  });
+    if (chip.dataset.pbReady !== '1') {
+      chip.dataset.pbReady = '1';
 
-  // 建立档案
-  $('pbCreate')?.addEventListener('click', async () => {
-    error(null);
-    if (!cryptoReady()) {
-      error('当前环境不支持加密（需要 HTTPS 或 localhost）');
-      return;
-    }
-    const name = ($<HTMLInputElement>('pbNameInput')?.value || '').trim();
-    const p1 = $<HTMLInputElement>('pbPass')?.value || '';
-    const p2 = $<HTMLInputElement>('pbPass2')?.value || '';
-    if (p1.length < 6) {
-      error('密码至少 6 位');
-      return;
-    }
-    if (p1 !== p2) {
-      error('两次输入的密码不一致');
-      return;
-    }
-    const btn = $<HTMLButtonElement>('pbCreate');
-    if (btn) btn.disabled = true;
-    const res = await store.setup(p1, name);
-    if (btn) btn.disabled = false;
-    if (!res.ok) {
-      error(res.error || '创建失败');
-      return;
-    }
-    ($<HTMLInputElement>('pbPass')!).value = '';
-    ($<HTMLInputElement>('pbPass2')!).value = '';
-    toast('档案已创建，本机记录已并入');
-    render();
-  });
+      chip.addEventListener('click', openDialog);
+      $('pbClose')?.addEventListener('click', () => $<HTMLDialogElement>('pbDialog')?.close());
 
-  // 解锁
-  const doUnlock = async () => {
-    error(null);
-    const pass = $<HTMLInputElement>('pbUnlockPass')?.value || '';
-    if (!pass) {
-      error('请输入密码');
-      return;
-    }
-    const btn = $<HTMLButtonElement>('pbUnlockBtn');
-    if (btn) btn.disabled = true;
-    const res = await store.unlock(pass);
-    if (btn) btn.disabled = false;
-    if (!res.ok) {
-      error(res.error || '解锁失败');
-      return;
-    }
-    ($<HTMLInputElement>('pbUnlockPass')!).value = '';
-    toast('已解锁');
-    render();
-  };
-  $('pbUnlockBtn')?.addEventListener('click', doUnlock);
-  $<HTMLInputElement>('pbUnlockPass')?.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') doUnlock();
-  });
+      $('pbDialog')?.addEventListener('click', (e) => {
+        const dialog = $<HTMLDialogElement>('pbDialog');
+        if (dialog && e.target === dialog) dialog.close();
+      });
 
-  // 锁定
-  $('pbLock')?.addEventListener('click', () => {
-    store.lock();
-    toast('已锁定');
-    render();
-  });
-
-  // 导出
-  $('pbExport')?.addEventListener('click', async () => {
-    const text = await store.exportText();
-    const blob = new Blob([text], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    const d = new Date();
-    const stamp = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`;
-    a.href = url;
-    a.download = `sen-save-${stamp}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-    toast('已导出，请收好这个文件');
-  });
-
-  // 导入
-  $('pbImport')?.addEventListener('click', () => $<HTMLInputElement>('pbFile')?.click());
-  $<HTMLInputElement>('pbFile')?.addEventListener('change', async (e) => {
-    const input = e.target as HTMLInputElement;
-    const file = input.files?.[0];
-    if (!file) return;
-    try {
-      const text = await file.text();
-      const res = await store.importText(text);
-      if (!res.ok) error(res.error || '导入失败');
-      else {
-        toast('导入成功');
+      // 建立档案
+      $('pbCreate')?.addEventListener('click', async () => {
+        error(null);
+        if (!cryptoReady()) {
+          error('当前环境不支持加密（需要 HTTPS 或 localhost）');
+          return;
+        }
+        const name = ($<HTMLInputElement>('pbNameInput')?.value || '').trim();
+        const p1 = $<HTMLInputElement>('pbPass')?.value || '';
+        const p2 = $<HTMLInputElement>('pbPass2')?.value || '';
+        if (p1.length < 6) {
+          error('密码至少 6 位');
+          return;
+        }
+        if (p1 !== p2) {
+          error('两次输入的密码不一致');
+          return;
+        }
+        const btn = $<HTMLButtonElement>('pbCreate');
+        if (btn) btn.disabled = true;
+        const res = await store.setup(p1, name);
+        if (btn) btn.disabled = false;
+        if (!res.ok) {
+          error(res.error || '创建失败');
+          return;
+        }
+        ($<HTMLInputElement>('pbPass')!).value = '';
+        ($<HTMLInputElement>('pbPass2')!).value = '';
+        toast('档案已创建，本机记录已并入');
         render();
-      }
-    } catch {
-      error('读取文件失败');
+      });
+
+      // 解锁
+      const doUnlock = async () => {
+        error(null);
+        const pass = $<HTMLInputElement>('pbUnlockPass')?.value || '';
+        if (!pass) {
+          error('请输入密码');
+          return;
+        }
+        const btn = $<HTMLButtonElement>('pbUnlockBtn');
+        if (btn) btn.disabled = true;
+        const res = await store.unlock(pass);
+        if (btn) btn.disabled = false;
+        if (!res.ok) {
+          error(res.error || '解锁失败');
+          return;
+        }
+        ($<HTMLInputElement>('pbUnlockPass')!).value = '';
+        toast('已解锁');
+        render();
+      };
+      $('pbUnlockBtn')?.addEventListener('click', doUnlock);
+      $<HTMLInputElement>('pbUnlockPass')?.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') doUnlock();
+      });
+
+      // 锁定
+      $('pbLock')?.addEventListener('click', () => {
+        store.lock();
+        toast('已锁定');
+        render();
+      });
+
+      // 导出
+      $('pbExport')?.addEventListener('click', async () => {
+        const text = await store.exportText();
+        const blob = new Blob([text], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        const d = new Date();
+        const stamp = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`;
+        a.href = url;
+        a.download = `sen-save-${stamp}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+        toast('已导出，请收好这个文件');
+      });
+
+      // 导入
+      $('pbImport')?.addEventListener('click', () => $<HTMLInputElement>('pbFile')?.click());
+      $<HTMLInputElement>('pbFile')?.addEventListener('change', async (e) => {
+        const input = e.target as HTMLInputElement;
+        const file = input.files?.[0];
+        if (!file) return;
+        try {
+          const text = await file.text();
+          const res = await store.importText(text);
+          if (!res.ok) error(res.error || '导入失败');
+          else {
+            toast('导入成功');
+            render();
+          }
+        } catch {
+          error('读取文件失败');
+        }
+        input.value = '';
+      });
+
+      // 登录 / 退出 / 手动同步
+      $('pbSignIn')?.addEventListener('click', async () => {
+        error(null);
+        const btn = $<HTMLButtonElement>('pbSignIn');
+        if (btn) btn.disabled = true;
+        const res = await store.signIn();
+        if (!res.ok) {
+          if (btn) btn.disabled = false;
+          error(res.error || '登录没能发起');
+        }
+      });
+
+      $('pbSignOut')?.addEventListener('click', () => {
+        if (!window.confirm('退出后本机不会保留云端副本，但下次登录还能拉回来。确定退出？')) return;
+        store.signOut();
+        toast('已退出登录');
+        render();
+      });
+
+      $('pbSyncNow')?.addEventListener('click', async () => {
+        error(null);
+        const btn = $<HTMLButtonElement>('pbSyncNow');
+        if (btn) btn.disabled = true;
+        const res = await store.syncNow();
+        if (btn) btn.disabled = false;
+        if (!res.ok) error(res.error || '同步失败');
+        else render();
+      });
+
+      // 删除档案
+      $('pbReset')?.addEventListener('click', async () => {
+        const signedIn = !!store.cloudUser;
+        const msg = signedIn
+          ? '这会删除本机记录，并清空云端那份战绩。确定？'
+          : '删除后本机所有加密档案和游客记录都会消失，且无法恢复。确定？';
+        if (!window.confirm(msg)) return;
+        if (!window.confirm('再确认一次：真的要删除吗？')) return;
+        await store.reset({ cloud: signedIn });
+        toast(signedIn ? '已清空云端与本机记录' : '档案已删除');
+        render();
+      });
     }
-    input.value = '';
-  });
 
-  // 删除档案
-  $('pbReset')?.addEventListener('click', async () => {
-    if (!window.confirm('删除后本机所有加密档案和游客记录都会消失，且无法恢复。确定？')) return;
-    if (!window.confirm('再确认一次：真的要删除吗？')) return;
-    await store.reset();
-    toast('档案已删除');
     render();
-  });
+  }
 
-  store.subscribe(render);
-  render();
+  if (!(document as any).__pbSubscribed) {
+    (document as any).__pbSubscribed = true;
+    store.subscribe(render);
+  }
+  init();
+  document.addEventListener('astro:page-load', init);
 </script>
 
 <style>
@@ -353,6 +522,140 @@
   .pb-dot--unlocked {
     background: var(--color-cyan);
     box-shadow: 0 0 10px color-mix(in oklab, var(--color-cyan) 85%, transparent);
+  }
+
+  .pb-chip[data-state='cloud'],
+  .pb-chip[data-state='cloud']:hover {
+    color: var(--color-cyan);
+    border-color: color-mix(in oklab, var(--color-cyan) 42%, transparent);
+    background: color-mix(in oklab, var(--color-cyan) 10%, transparent);
+  }
+
+  .pb-dot--cloud {
+    background: var(--color-cyan);
+    box-shadow: 0 0 10px color-mix(in oklab, var(--color-cyan) 85%, transparent);
+  }
+
+  /* ---------- 云同步区块 ---------- */
+  .pb-cloud {
+    margin-bottom: 1.1rem;
+  }
+
+  .pb-cloud-card {
+    padding: 0.9rem 0.95rem 0.85rem;
+    border-radius: 14px;
+    background: color-mix(in oklab, var(--color-cyan) 6%, transparent);
+    border: 1px solid color-mix(in oklab, var(--color-cyan) 20%, transparent);
+  }
+
+  .pb-cloud-card .pb-title {
+    font-size: 1.05rem;
+  }
+
+  .pb-cloud-card .pb-desc {
+    margin-bottom: 0.8rem;
+  }
+
+  .pb-gh {
+    width: 100%;
+    justify-content: center;
+    padding: 0.55rem 0.7rem;
+    border-color: color-mix(in oklab, var(--color-cyan) 38%, transparent);
+    background: color-mix(in oklab, var(--color-cyan) 12%, transparent);
+    color: #c9f7ff;
+  }
+
+  .pb-gh:hover {
+    background: color-mix(in oklab, var(--color-cyan) 20%, transparent);
+  }
+
+  .pb-gh:disabled {
+    opacity: 0.6;
+    cursor: default;
+  }
+
+  .pb-cloud-head {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+  }
+
+  .pb-avatar {
+    width: 34px;
+    height: 34px;
+    flex: 0 0 auto;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+  }
+
+  .pb-cloud-id {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .pb-cloud-name {
+    margin: 0;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #e7ecf7;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .pb-cloud-state {
+    margin: 0.14rem 0 0;
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    color: #7e8aa3;
+  }
+
+  .pb-cloud-state[data-phase='synced'] {
+    color: #5eead4;
+  }
+
+  .pb-cloud-state[data-phase='syncing'] {
+    color: #93c5fd;
+  }
+
+  .pb-cloud-state[data-phase='error'] {
+    color: #fda4af;
+  }
+
+  .pb-cloud-err {
+    margin: 0.6rem 0 0;
+    padding: 0.45rem 0.55rem;
+    border-radius: 8px;
+    background: rgba(251, 113, 133, 0.1);
+    border: 1px solid rgba(251, 113, 133, 0.26);
+    color: #fda4af;
+    font-size: 0.7rem;
+    line-height: 1.6;
+  }
+
+  .pb-mini {
+    flex: 0 0 auto;
+    padding: 0.35rem 0.45rem;
+    font-size: 0.85rem;
+    line-height: 1;
+  }
+
+  .pb-link {
+    margin-top: 0.7rem;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: #7e8aa3;
+    font-family: inherit;
+    font-size: 0.7rem;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    cursor: pointer;
+  }
+
+  .pb-link:hover {
+    color: #cdd5e6;
   }
 
   .pb-label {
@@ -573,9 +876,8 @@
     font-size: 0.75rem;
   }
 
-  .pb-panel[hidden],
-  .pb-error[hidden],
-  .pb-toast[hidden] {
-    display: none;
+  /* hidden 属性要能压住 .pb-btn 的 inline-flex */
+  .pb-dialog [hidden] {
+    display: none !important;
   }
 </style>

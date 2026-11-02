@@ -1,0 +1,348 @@
+/* ============================================================
+   小游戏 · 共用外壳
+   全局样式（非 scoped），类名统一 gx- 前缀
+   ============================================================ */
+
+.gx-page {
+  padding: 2.4rem 0 4.5rem;
+}
+
+/* ---------- 返回 ---------- */
+.gx-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-bottom: 1.4rem;
+  padding: 0.34rem 0.8rem 0.34rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  color: var(--color-fog);
+  border: 1px solid color-mix(in oklab, #ffffff 9%, transparent);
+  background: color-mix(in oklab, #ffffff 3.5%, transparent);
+  transition:
+    color 0.25s ease,
+    border-color 0.25s ease,
+    transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.gx-back:hover {
+  color: var(--color-cyan);
+  border-color: color-mix(in oklab, var(--color-cyan) 45%, transparent);
+  transform: translateX(-3px);
+}
+
+.gx-back i {
+  font-size: 0.95em;
+}
+
+/* ---------- 页头 ---------- */
+.gx-head {
+  margin-bottom: 1.7rem;
+}
+
+.gx-kicker {
+  margin: 0 0 0.55rem;
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.34em;
+  color: var(--color-cyan);
+}
+
+.gx-title {
+  margin: 0 0 0.5rem;
+  font-family: var(--font-display);
+  font-size: clamp(1.85rem, 4vw, 2.5rem);
+  line-height: 1.12;
+  letter-spacing: 0.01em;
+}
+
+.gx-sub {
+  margin: 0;
+  color: var(--color-fog);
+  font-size: 0.9rem;
+  line-height: 1.7;
+  max-width: 46ch;
+}
+
+/* ---------- 舞台 ---------- */
+.gx-stage {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 256px;
+  gap: 1.4rem;
+  align-items: start;
+}
+
+.gx-board-col {
+  display: flex;
+  justify-content: center;
+  min-width: 0;
+}
+
+.gx-screen {
+  position: relative;
+  width: 100%;
+  border-radius: 18px;
+  overflow: hidden;
+  background: #060810;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow:
+    0 44px 100px -56px rgba(34, 211, 238, 0.6),
+    inset 0 1px 0 rgba(255, 255, 255, 0.07);
+}
+
+.gx-screen canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  touch-action: none;
+}
+
+/* ---------- 遮罩层 ---------- */
+.gx-overlay {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 1.2rem;
+  z-index: 3;
+  background: radial-gradient(
+    circle at 50% 45%,
+    rgba(9, 12, 22, 0.55),
+    rgba(4, 5, 10, 0.88) 70%
+  );
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  animation: gx-fade 0.28s ease-out both;
+}
+
+.gx-overlay[hidden] {
+  display: none;
+}
+
+@keyframes gx-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.gx-overlay-card {
+  text-align: center;
+  max-width: 300px;
+}
+
+.gx-overlay-kicker {
+  margin: 0 0 0.55rem;
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.36em;
+  color: var(--color-cyan);
+}
+
+.gx-overlay-title {
+  margin: 0 0 0.6rem;
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  color: #fff;
+  line-height: 1.25;
+}
+
+.gx-overlay-desc {
+  margin: 0 0 1.3rem;
+  font-size: 0.82rem;
+  line-height: 1.75;
+  color: #9aa3ba;
+}
+
+.gx-overlay-desc b {
+  color: var(--color-cyan);
+  font-weight: 600;
+}
+
+/* ---------- 按钮 ---------- */
+.gx-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  min-width: 128px;
+  padding: 0.62rem 1.4rem;
+  border: 0;
+  border-radius: 999px;
+  font-size: 0.86rem;
+  font-weight: 600;
+  font-family: inherit;
+  color: #04070e;
+  cursor: pointer;
+  background: linear-gradient(120deg, var(--color-cyan), #7dd3fc 45%, var(--color-violet));
+  box-shadow: 0 12px 34px -14px rgba(34, 211, 238, 0.9);
+  transition:
+    transform 0.25s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.25s ease,
+    filter 0.25s ease;
+}
+
+.gx-btn:hover {
+  transform: translateY(-2px);
+  filter: brightness(1.06);
+  box-shadow: 0 18px 40px -14px rgba(167, 139, 250, 0.9);
+}
+
+.gx-btn:active {
+  transform: translateY(0) scale(0.97);
+}
+
+.gx-btn--ghost {
+  color: var(--color-mist);
+  background: color-mix(in oklab, #ffffff 6%, transparent);
+  border: 1px solid color-mix(in oklab, #ffffff 12%, transparent);
+  box-shadow: none;
+}
+
+.gx-btn--ghost:hover {
+  color: #fff;
+  border-color: color-mix(in oklab, var(--color-cyan) 50%, transparent);
+  box-shadow: none;
+}
+
+/* ---------- 侧栏 ---------- */
+.gx-side {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.gx-panel {
+  padding: 0.95rem 1.05rem;
+  border-radius: 16px;
+  background: color-mix(in oklab, var(--color-ink-2) 82%, transparent);
+  border: 1px solid color-mix(in oklab, #ffffff 7%, transparent);
+}
+
+.gx-panel-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin: 0 0 0.5rem;
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.2em;
+  color: var(--color-fog);
+}
+
+.gx-score {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 1.95rem;
+  font-weight: 700;
+  line-height: 1;
+  color: #fff;
+  font-variant-numeric: tabular-nums;
+}
+
+.gx-score--sm {
+  font-size: 1.1rem;
+}
+
+.gx-score-sub {
+  margin: 0.4rem 0 0;
+  font-size: 0.74rem;
+  color: var(--color-fog);
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.gx-keys {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.gx-key {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.24rem 0.5rem;
+  border-radius: 7px;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  color: var(--color-mist);
+  background: color-mix(in oklab, #ffffff 5%, transparent);
+  border: 1px solid color-mix(in oklab, #ffffff 10%, transparent);
+  border-bottom-width: 2px;
+}
+
+.gx-note {
+  margin: 0;
+  font-size: 0.76rem;
+  line-height: 1.8;
+  color: var(--color-fog);
+}
+
+.gx-note strong {
+  color: var(--color-mist);
+  font-weight: 600;
+}
+
+.gx-mini {
+  display: block;
+  margin-top: 0.2rem;
+  border-radius: 10px;
+  background: #060810;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+/* ---------- 小屏适配 ---------- */
+@media (max-width: 980px) {
+  .gx-stage {
+    grid-template-columns: 1fr;
+  }
+  .gx-side {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+  .gx-panel {
+    flex: 1 1 150px;
+  }
+  .gx-sub {
+    max-width: none;
+  }
+}
+
+@media (max-width: 640px) {
+  .gx-page {
+    padding: 1.6rem 0 3rem;
+  }
+  .gx-side {
+    flex-direction: column;
+  }
+}
+
+/* ---------- 浅色主题 ---------- */
+/* 全局浅色主题会把 h2 压成深色，遮罩层始终盖在深色棋盘上，这里强制保持白色 */
+:root[data-theme='light'] .gx-overlay-title {
+  color: #fff;
+}
+
+:root[data-theme='light'] .gx-back {
+  border-color: rgba(11, 16, 32, 0.12);
+  background: rgba(255, 255, 255, 0.72);
+}
+
+:root[data-theme='light'] .gx-panel {
+  background: rgba(255, 255, 255, 0.78);
+  border-color: rgba(11, 16, 32, 0.08);
+}
+
+:root[data-theme='light'] .gx-score {
+  color: #10131d;
+}
+
+:root[data-theme='light'] .gx-key {
+  color: #3b4356;
+  background: #f1f3f9;
+  border-color: rgba(11, 16, 32, 0.1);
+}

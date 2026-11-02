@@ -12,3 +12,4 @@ shots/
 .vercel
 .netlify
 .workbuddy/
+*.bak

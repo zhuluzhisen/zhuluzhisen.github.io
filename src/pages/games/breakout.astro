@@ -1,5 +1,6 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro';
+import PlayerBar from '../../components/PlayerBar.astro';
 import '../../styles/games.css';
 ---
 
@@ -11,8 +12,13 @@ import '../../styles/games.css';
     </a>
 
     <header class="gx-head">
-      <p class="gx-kicker">BREAKOUT</p>
-      <h1 class="gx-title">打砖块</h1>
+      <div class="gx-head-row">
+        <div>
+          <p class="gx-kicker">BREAKOUT</p>
+          <h1 class="gx-title">打砖块</h1>
+        </div>
+        <PlayerBar />
+      </div>
       <p class="gx-sub">鼠标或 ← → 控制挡板，空格发球。三条命，清完一屏砖就进下一关，球会越来越快。</p>
     </header>
 
@@ -66,9 +72,10 @@ import '../../styles/games.css';
 </BaseLayout>
 
 <script>
+  import { readStat, recordRun } from '../../lib/save-store';
+
   const W = 720;
   const H = 460;
-  const BEST_KEY = 'fang-breakout-best';
 
   const COLS = 9;
   const ROWS = 5;
@@ -194,11 +201,6 @@ import '../../styles/games.css';
   function saveBest() {
     if (score > best) {
       best = score;
-      try {
-        localStorage.setItem(BEST_KEY, String(best));
-      } catch (e) {
-        /* ignore */
-      }
       syncHud();
     }
   }
@@ -235,8 +237,15 @@ import '../../styles/games.css';
     syncHud();
     if (lives <= 0) {
       mode = 'over';
+      const isNewBest = score > best;
       saveBest();
-      overlay('GAME OVER', '三条命用完了', `本局得分 <b>${score}</b> · 打到第 ${level} 关<br>按 <b>空格</b> 再来一局`, '再来一局');
+      void recordRun('breakout', score, { level });
+      overlay(
+        isNewBest ? 'NEW RECORD' : 'GAME OVER',
+        isNewBest ? '新纪录！' : '三条命用完了',
+        `本局得分 <b>${score}</b> · 打到第 ${level} 关<br>按 <b>空格</b> 再来一局`,
+        '再来一局',
+      );
       return;
     }
     resetBall();
@@ -531,11 +540,10 @@ import '../../styles/games.css';
     if (!ctx) return;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-    try {
-      best = Number(localStorage.getItem(BEST_KEY) || 0) || 0;
-    } catch (e) {
-      best = 0;
-    }
+    void readStat('breakout').then((rec) => {
+      best = Math.max(best, rec.best || 0);
+      syncHud();
+    });
 
     buildBricks();
     resetBall();

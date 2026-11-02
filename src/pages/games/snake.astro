@@ -1,5 +1,6 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro';
+import PlayerBar from '../../components/PlayerBar.astro';
 import '../../styles/games.css';
 ---
 
@@ -11,8 +12,13 @@ import '../../styles/games.css';
     </a>
 
     <header class="gx-head">
-      <p class="gx-kicker">SNAKE</p>
-      <h1 class="gx-title">贪吃蛇</h1>
+      <div class="gx-head-row">
+        <div>
+          <p class="gx-kicker">SNAKE</p>
+          <h1 class="gx-title">贪吃蛇</h1>
+        </div>
+        <PlayerBar />
+      </div>
       <p class="gx-sub">方向键或 WASD 转向。每吃一颗光点变长一格、速度快一点，撞墙或咬到自己就结束。</p>
     </header>
 
@@ -60,12 +66,13 @@ import '../../styles/games.css';
 </BaseLayout>
 
 <script>
+  import { readStat, recordRun } from '../../lib/save-store';
+
   const COLS = 22;
   const ROWS = 22;
   const CELL = 24;
   const W = COLS * CELL;
   const H = ROWS * CELL;
-  const BEST_KEY = 'fang-snake-best';
 
   let raf = 0;
   let canvas: HTMLCanvasElement | null = null;
@@ -184,18 +191,13 @@ import '../../styles/games.css';
   function die() {
     mode = 'over';
     deadAt = performance.now();
-    if (score > best) {
-      best = score;
-      try {
-        localStorage.setItem(BEST_KEY, String(best));
-      } catch (e) {
-        /* ignore */
-      }
-    }
+    const isNewBest = score > best;
+    if (isNewBest) best = score;
     syncScore();
+    void recordRun('snake', score);
     overlay(
-      'GAME OVER',
-      '撞上了',
+      isNewBest ? 'NEW RECORD' : 'GAME OVER',
+      isNewBest ? '新纪录！' : '撞上了',
       `本局得分 <b>${score}</b> · 最高 ${best}<br>按 <b>空格</b> 再来一局`,
       '再来一局',
     );
@@ -228,6 +230,9 @@ import '../../styles/games.css';
       stepMs = Math.max(62, 132 - score * 3);
       if (!placeFood()) {
         mode = 'over';
+        best = Math.max(best, score);
+        syncScore();
+        void recordRun('snake', score);
         overlay('PERFECT', '满屏都是你', '棋盘填满了，这局没法再长了', '再来一局');
       }
       syncScore();
@@ -385,11 +390,10 @@ import '../../styles/games.css';
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     bg = makeBackground();
 
-    try {
-      best = Number(localStorage.getItem(BEST_KEY) || 0) || 0;
-    } catch (e) {
-      best = 0;
-    }
+    void readStat('snake').then((rec) => {
+      best = Math.max(best, rec.best || 0);
+      syncScore();
+    });
 
     reset();
     overlay('READY', '准备好了吗', '按 <b>空格</b> 或点击下面的按钮开始', '开始游戏');

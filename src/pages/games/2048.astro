@@ -1,5 +1,6 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro';
+import PlayerBar from '../../components/PlayerBar.astro';
 import '../../styles/games.css';
 ---
 
@@ -11,8 +12,13 @@ import '../../styles/games.css';
     </a>
 
     <header class="gx-head">
-      <p class="gx-kicker">2048</p>
-      <h1 class="gx-title">2048</h1>
+      <div class="gx-head-row">
+        <div>
+          <p class="gx-kicker">2048</p>
+          <h1 class="gx-title">2048</h1>
+        </div>
+        <PlayerBar />
+      </div>
       <p class="gx-sub">方向键滑动，相同的数字撞在一起就翻倍。格子填满又动不了时结束。</p>
     </header>
 
@@ -59,11 +65,12 @@ import '../../styles/games.css';
 </BaseLayout>
 
 <script>
+  import { readStat, recordRun } from '../../lib/save-store';
+
   const N = 4;
   const CELL = 110;
   const GAP = 14;
   const SIZE = N * CELL + (N + 1) * GAP;
-  const BEST_KEY = 'fang-2048-best';
   const ANIM = 108;
 
   const STYLE: Record<number, [string, string]> = {
@@ -277,16 +284,8 @@ import '../../styles/games.css';
   function finishMove() {
     busy = false;
     anim = null;
+    if (score > best) best = score;
     syncHud();
-    if (score > best) {
-      best = score;
-      try {
-        localStorage.setItem(BEST_KEY, String(best));
-      } catch (e) {
-        /* ignore */
-      }
-      syncHud();
-    }
   }
 
   function hasMoves() {
@@ -305,13 +304,23 @@ import '../../styles/games.css';
     if (mode !== 'playing') return;
     if (!hasMoves()) {
       mode = 'over';
-      overlay('GAME OVER', '走不动了', `本局得分 <b>${score}</b> · 最高 ${best}`, '再来一局');
+      const isNewBest = score > best;
+      if (isNewBest) best = score;
+      syncHud();
+      void recordRun('2048', score);
+      overlay(
+        isNewBest ? 'NEW RECORD' : 'GAME OVER',
+        isNewBest ? '新纪录！' : '走不动了',
+        `本局得分 <b>${score}</b> · 最高 ${best}`,
+        '再来一局',
+      );
       btnAction = 'start';
     }
   }
 
   function win() {
     mode = 'win';
+    void recordRun('2048', score);
     overlay('2048', '凑到 2048 了', `分数 <b>${score}</b><br>还能继续往上叠，要继续吗？`, '继续挑战');
     btnAction = 'continue';
   }
@@ -479,11 +488,10 @@ import '../../styles/games.css';
     if (!ctx) return;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-    try {
-      best = Number(localStorage.getItem(BEST_KEY) || 0) || 0;
-    } catch (e) {
-      best = 0;
-    }
+    void readStat('2048').then((rec) => {
+      best = Math.max(best, rec.best || 0);
+      syncHud();
+    });
 
     reset();
     mode = 'ready';

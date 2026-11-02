@@ -1,0 +1,581 @@
+---
+/**
+ * 玩家档案条 —— 放在页面头部，点击打开档案面板
+ * 三种状态：游客 / 已锁定 / 已解锁
+ */
+---
+
+<div class="pb">
+  <button class="pb-chip" id="pbChip" type="button" aria-haspopup="dialog" aria-label="玩家档案">
+    <span class="pb-dot" id="pbDot"></span>
+    <span class="pb-label" id="pbLabel">游客模式</span>
+    <i class="ri-arrow-right-s-line" aria-hidden="true"></i>
+  </button>
+</div>
+
+<dialog class="pb-dialog" id="pbDialog">
+  <div class="pb-inner">
+    <button class="pb-close" id="pbClose" type="button" aria-label="关闭">
+      <i class="ri-close-line" aria-hidden="true"></i>
+    </button>
+
+    <!-- 建立档案 -->
+    <section class="pb-panel" id="pbPanelSetup" hidden>
+      <p class="pb-kicker">NEW PROFILE</p>
+      <h2 class="pb-title">建立玩家档案</h2>
+      <p class="pb-desc">
+        给这台设备设一个密码。档案用 <b>AES-GCM</b> 加密后存在浏览器里，
+        密码不会上传到任何服务器 —— 也因此 <b>忘记密码就无法找回</b>。
+      </p>
+      <label class="pb-field">
+        <span>称呼（可留空）</span>
+        <input id="pbNameInput" type="text" maxlength="16" placeholder="玩家" autocomplete="off" />
+      </label>
+      <label class="pb-field">
+        <span>密码（至少 6 位）</span>
+        <input id="pbPass" type="password" maxlength="64" autocomplete="new-password" />
+      </label>
+      <label class="pb-field">
+        <span>再输一次</span>
+        <input id="pbPass2" type="password" maxlength="64" autocomplete="new-password" />
+      </label>
+      <button class="gx-btn pb-submit" id="pbCreate" type="button">创建并解锁</button>
+    </section>
+
+    <!-- 解锁 -->
+    <section class="pb-panel" id="pbPanelUnlock" hidden>
+      <p class="pb-kicker">LOCKED</p>
+      <h2 class="pb-title">档案已锁定</h2>
+      <p class="pb-desc">输入密码继续。游客模式下玩出来的记录，解锁后会自动并入档案。</p>
+      <label class="pb-field">
+        <span>密码</span>
+        <input id="pbUnlockPass" type="password" maxlength="64" autocomplete="current-password" />
+      </label>
+      <button class="gx-btn pb-submit" id="pbUnlockBtn" type="button">解锁</button>
+      <p class="pb-fine">忘记密码？只能删除档案重来，数据无法恢复。</p>
+    </section>
+
+    <!-- 已解锁 -->
+    <section class="pb-panel" id="pbPanelManage" hidden>
+      <p class="pb-kicker">UNLOCKED</p>
+      <h2 class="pb-title" id="pbManageName">我的档案</h2>
+      <dl class="pb-meta">
+        <div><dt>建立于</dt><dd id="pbCreated">—</dd></div>
+        <div><dt>已记录</dt><dd id="pbCount">0 个项目</dd></div>
+        <div><dt>占用</dt><dd id="pbUsage">0 KB</dd></div>
+      </dl>
+
+      <div class="pb-actions">
+        <button class="pb-btn" id="pbExport" type="button">
+          <i class="ri-download-2-line" aria-hidden="true"></i>
+          导出档案
+        </button>
+        <button class="pb-btn" id="pbImport" type="button">
+          <i class="ri-upload-2-line" aria-hidden="true"></i>
+          导入档案
+        </button>
+        <button class="pb-btn" id="pbLock" type="button">
+          <i class="ri-lock-line" aria-hidden="true"></i>
+          锁定
+        </button>
+      </div>
+      <input id="pbFile" type="file" accept="application/json,.json" hidden />
+
+      <p class="pb-fine">
+        换设备时用「导出」下载一个 JSON，在新设备上建立档案后「导入」，记录就带过去了 ——
+        这是目前不花钱也能搬家存档的办法。
+      </p>
+      <button class="pb-danger" id="pbReset" type="button">删除档案</button>
+    </section>
+
+    <p class="pb-error" id="pbError" hidden></p>
+    <p class="pb-toast" id="pbToast" hidden></p>
+  </div>
+</dialog>
+
+<script>
+  import { store, cryptoReady } from '../lib/save-store';
+
+  const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T | null;
+  const chip = $<HTMLButtonElement>('pbChip');
+  const dot = $('pbDot');
+  const label = $('pbLabel');
+  const dialog = $<HTMLDialogElement>('pbDialog');
+
+  const panels = {
+    setup: $('pbPanelSetup'),
+    unlock: $('pbPanelUnlock'),
+    manage: $('pbPanelManage'),
+  };
+
+  function toast(msg: string) {
+    const el = $('pbToast');
+    if (!el) return;
+    el.textContent = msg;
+    el.hidden = false;
+    window.setTimeout(() => {
+      el.hidden = true;
+    }, 2200);
+  }
+
+  function error(msg: string | null) {
+    const el = $('pbError');
+    if (!el) return;
+    if (!msg) {
+      el.hidden = true;
+      el.textContent = '';
+      return;
+    }
+    el.textContent = msg;
+    el.hidden = false;
+  }
+
+  function fmtDate(ts: number) {
+    if (!ts) return '—';
+    const d = new Date(ts);
+    const p = (n: number) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
+  }
+
+  async function render() {
+    await store.whenReady();
+    const s = store.state;
+
+    if (dot) dot.className = `pb-dot pb-dot--${s}`;
+    if (label) {
+      label.textContent =
+        s === 'unlocked' ? store.profileName || '我的档案' : s === 'locked' ? '档案已锁定' : '游客模式';
+    }
+    if (chip) {
+      chip.dataset.state = s;
+      chip.setAttribute(
+        'title',
+        s === 'unlocked'
+          ? '档案已解锁，记录正在加密保存'
+          : s === 'locked'
+            ? '档案已锁定，点击解锁'
+            : '当前是游客模式，记录只明文存在本机',
+      );
+    }
+
+    const show = { setup: s === 'empty', unlock: s === 'locked', manage: s === 'unlocked' };
+    (Object.keys(panels) as (keyof typeof panels)[]).forEach((k) => {
+      const el = panels[k];
+      if (el) el.hidden = !show[k];
+    });
+
+    if (s === 'unlocked') {
+      const data = await store.all();
+      const nameEl = $('pbManageName');
+      if (nameEl) nameEl.textContent = data?.profile?.name || '我的档案';
+      const created = $('pbCreated');
+      if (created) created.textContent = fmtDate(data?.profile?.createdAt);
+      const count = Object.keys(data?.games || {}).length;
+      const cntEl = $('pbCount');
+      if (cntEl) cntEl.textContent = `${count} 个游戏`;
+      const usage = $('pbUsage');
+      if (usage) usage.textContent = `${Math.max(1, Math.round(store.usageBytes() / 1024))} KB`;
+    }
+  }
+
+  function openDialog() {
+    error(null);
+    render();
+    if (dialog && !dialog.open) dialog.showModal();
+  }
+
+  /* ---- 事件绑定 ---- */
+  chip?.addEventListener('click', openDialog);
+  $('pbClose')?.addEventListener('click', () => dialog?.close());
+
+  dialog?.addEventListener('click', (e) => {
+    if (e.target === dialog) dialog.close();
+  });
+
+  // 建立档案
+  $('pbCreate')?.addEventListener('click', async () => {
+    error(null);
+    if (!cryptoReady()) {
+      error('当前环境不支持加密（需要 HTTPS 或 localhost）');
+      return;
+    }
+    const name = ($<HTMLInputElement>('pbNameInput')?.value || '').trim();
+    const p1 = $<HTMLInputElement>('pbPass')?.value || '';
+    const p2 = $<HTMLInputElement>('pbPass2')?.value || '';
+    if (p1.length < 6) {
+      error('密码至少 6 位');
+      return;
+    }
+    if (p1 !== p2) {
+      error('两次输入的密码不一致');
+      return;
+    }
+    const btn = $<HTMLButtonElement>('pbCreate');
+    if (btn) btn.disabled = true;
+    const res = await store.setup(p1, name);
+    if (btn) btn.disabled = false;
+    if (!res.ok) {
+      error(res.error || '创建失败');
+      return;
+    }
+    ($<HTMLInputElement>('pbPass')!).value = '';
+    ($<HTMLInputElement>('pbPass2')!).value = '';
+    toast('档案已创建，本机记录已并入');
+    render();
+  });
+
+  // 解锁
+  const doUnlock = async () => {
+    error(null);
+    const pass = $<HTMLInputElement>('pbUnlockPass')?.value || '';
+    if (!pass) {
+      error('请输入密码');
+      return;
+    }
+    const btn = $<HTMLButtonElement>('pbUnlockBtn');
+    if (btn) btn.disabled = true;
+    const res = await store.unlock(pass);
+    if (btn) btn.disabled = false;
+    if (!res.ok) {
+      error(res.error || '解锁失败');
+      return;
+    }
+    ($<HTMLInputElement>('pbUnlockPass')!).value = '';
+    toast('已解锁');
+    render();
+  };
+  $('pbUnlockBtn')?.addEventListener('click', doUnlock);
+  $<HTMLInputElement>('pbUnlockPass')?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') doUnlock();
+  });
+
+  // 锁定
+  $('pbLock')?.addEventListener('click', () => {
+    store.lock();
+    toast('已锁定');
+    render();
+  });
+
+  // 导出
+  $('pbExport')?.addEventListener('click', async () => {
+    const text = await store.exportText();
+    const blob = new Blob([text], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const d = new Date();
+    const stamp = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`;
+    a.href = url;
+    a.download = `sen-save-${stamp}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast('已导出，请收好这个文件');
+  });
+
+  // 导入
+  $('pbImport')?.addEventListener('click', () => $<HTMLInputElement>('pbFile')?.click());
+  $<HTMLInputElement>('pbFile')?.addEventListener('change', async (e) => {
+    const input = e.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) return;
+    try {
+      const text = await file.text();
+      const res = await store.importText(text);
+      if (!res.ok) error(res.error || '导入失败');
+      else {
+        toast('导入成功');
+        render();
+      }
+    } catch {
+      error('读取文件失败');
+    }
+    input.value = '';
+  });
+
+  // 删除档案
+  $('pbReset')?.addEventListener('click', async () => {
+    if (!window.confirm('删除后本机所有加密档案和游客记录都会消失，且无法恢复。确定？')) return;
+    if (!window.confirm('再确认一次：真的要删除吗？')) return;
+    await store.reset();
+    toast('档案已删除');
+    render();
+  });
+
+  store.subscribe(render);
+  render();
+</script>
+
+<style>
+  .pb {
+    display: inline-flex;
+  }
+
+  .pb-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.42rem;
+    padding: 0.32rem 0.72rem 0.32rem 0.6rem;
+    border-radius: 999px;
+    font-family: inherit;
+    font-size: 0.78rem;
+    color: var(--color-mist);
+    background: color-mix(in oklab, #ffffff 4%, transparent);
+    border: 1px solid color-mix(in oklab, #ffffff 10%, transparent);
+    cursor: pointer;
+    transition:
+      border-color 0.25s ease,
+      color 0.25s ease,
+      background 0.25s ease;
+  }
+
+  .pb-chip:hover {
+    color: #fff;
+    border-color: color-mix(in oklab, var(--color-cyan) 45%, transparent);
+  }
+
+  .pb-chip[data-state='unlocked'] {
+    color: var(--color-cyan);
+    border-color: color-mix(in oklab, var(--color-cyan) 42%, transparent);
+    background: color-mix(in oklab, var(--color-cyan) 10%, transparent);
+  }
+
+  .pb-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #6b7280;
+    flex-shrink: 0;
+  }
+
+  .pb-dot--locked {
+    background: #fbbf24;
+  }
+
+  .pb-dot--unlocked {
+    background: var(--color-cyan);
+    box-shadow: 0 0 10px color-mix(in oklab, var(--color-cyan) 85%, transparent);
+  }
+
+  .pb-label {
+    max-width: 9rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* ---------- 对话框 ---------- */
+  .pb-dialog {
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    max-width: 420px;
+    width: calc(100% - 2rem);
+  }
+
+  .pb-dialog::backdrop {
+    background: rgba(3, 5, 10, 0.72);
+    backdrop-filter: blur(6px);
+  }
+
+  .pb-inner {
+    position: relative;
+    padding: 1.5rem 1.4rem 1.4rem;
+    border-radius: 20px;
+    background: color-mix(in oklab, #0d1120 96%, transparent);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 40px 90px -40px rgba(34, 211, 238, 0.5);
+    color: #cdd5e6;
+  }
+
+  .pb-close {
+    position: absolute;
+    top: 0.85rem;
+    right: 0.85rem;
+    width: 30px;
+    height: 30px;
+    display: grid;
+    place-items: center;
+    border-radius: 9px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.04);
+    color: #9aa3ba;
+    cursor: pointer;
+    font-size: 1rem;
+  }
+
+  .pb-close:hover {
+    color: #fff;
+  }
+
+  .pb-kicker {
+    margin: 0 0 0.5rem;
+    font-family: var(--font-mono);
+    font-size: 0.6rem;
+    letter-spacing: 0.3em;
+    color: var(--color-cyan);
+  }
+
+  .pb-title {
+    margin: 0 0 0.55rem;
+    font-family: var(--font-display);
+    font-size: 1.22rem;
+    color: #fff;
+  }
+
+  .pb-desc {
+    margin: 0 0 1.1rem;
+    font-size: 0.78rem;
+    line-height: 1.75;
+    color: #8d96ad;
+  }
+
+  .pb-desc b {
+    color: #cdd5e6;
+    font-weight: 600;
+  }
+
+  .pb-field {
+    display: block;
+    margin-bottom: 0.7rem;
+  }
+
+  .pb-field span {
+    display: block;
+    margin-bottom: 0.3rem;
+    font-size: 0.72rem;
+    color: #8d96ad;
+  }
+
+  .pb-field input {
+    width: 100%;
+    padding: 0.55rem 0.7rem;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(255, 255, 255, 0.04);
+    color: #e7ecf7;
+    font-family: inherit;
+    font-size: 0.85rem;
+    outline: none;
+    transition: border-color 0.2s ease;
+  }
+
+  .pb-field input:focus {
+    border-color: color-mix(in oklab, var(--color-cyan) 60%, transparent);
+  }
+
+  .pb-submit {
+    width: 100%;
+    margin-top: 0.4rem;
+  }
+
+  .pb-submit:disabled {
+    opacity: 0.6;
+    cursor: default;
+  }
+
+  .pb-meta {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.5rem;
+    margin: 0 0 1rem;
+  }
+
+  .pb-meta div {
+    padding: 0.5rem 0.6rem;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.035);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+  }
+
+  .pb-meta dt {
+    font-size: 0.62rem;
+    color: #767f96;
+    margin-bottom: 0.2rem;
+  }
+
+  .pb-meta dd {
+    margin: 0;
+    font-size: 0.78rem;
+    color: #dde4f2;
+    font-family: var(--font-mono);
+  }
+
+  .pb-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.45rem;
+    margin-bottom: 0.9rem;
+  }
+
+  .pb-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.32rem;
+    padding: 0.5rem 0.6rem;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(255, 255, 255, 0.05);
+    color: #cdd5e6;
+    font-family: inherit;
+    font-size: 0.76rem;
+    cursor: pointer;
+    transition: all 0.22s ease;
+  }
+
+  .pb-btn:hover {
+    color: #fff;
+    border-color: color-mix(in oklab, var(--color-cyan) 45%, transparent);
+    background: rgba(34, 211, 238, 0.1);
+  }
+
+  .pb-danger {
+    margin-top: 1rem;
+    width: 100%;
+    padding: 0.5rem;
+    border-radius: 10px;
+    border: 1px solid rgba(251, 113, 133, 0.3);
+    background: rgba(251, 113, 133, 0.06);
+    color: #fda4af;
+    font-family: inherit;
+    font-size: 0.75rem;
+    cursor: pointer;
+  }
+
+  .pb-danger:hover {
+    background: rgba(251, 113, 133, 0.14);
+  }
+
+  .pb-fine {
+    margin: 0.8rem 0 0;
+    font-size: 0.7rem;
+    line-height: 1.7;
+    color: #767f96;
+  }
+
+  .pb-error {
+    margin: 0.9rem 0 0;
+    padding: 0.5rem 0.65rem;
+    border-radius: 9px;
+    background: rgba(251, 113, 133, 0.1);
+    border: 1px solid rgba(251, 113, 133, 0.28);
+    color: #fda4af;
+    font-size: 0.75rem;
+  }
+
+  .pb-toast {
+    margin: 0.9rem 0 0;
+    padding: 0.5rem 0.65rem;
+    border-radius: 9px;
+    background: rgba(34, 211, 238, 0.1);
+    border: 1px solid rgba(34, 211, 238, 0.28);
+    color: #9df6ff;
+    font-size: 0.75rem;
+  }
+
+  .pb-panel[hidden],
+  .pb-error[hidden],
+  .pb-toast[hidden] {
+    display: none;
+  }
+</style>

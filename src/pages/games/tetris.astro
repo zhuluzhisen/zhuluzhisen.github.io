@@ -1,5 +1,6 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro';
+import PlayerBar from '../../components/PlayerBar.astro';
 import '../../styles/games.css';
 ---
 
@@ -11,8 +12,13 @@ import '../../styles/games.css';
     </a>
 
     <header class="gx-head">
-      <p class="gx-kicker">TETRIS</p>
-      <h1 class="gx-title">俄罗斯方块</h1>
+      <div class="gx-head-row">
+        <div>
+          <p class="gx-kicker">TETRIS</p>
+          <h1 class="gx-title">俄罗斯方块</h1>
+        </div>
+        <PlayerBar />
+      </div>
       <p class="gx-sub">← → 移动，↑ 旋转，空格直落。一次消四行拿最高分，每 10 行升一档速度。</p>
     </header>
 
@@ -69,12 +75,13 @@ import '../../styles/games.css';
 </BaseLayout>
 
 <script>
+  import { readStat, recordRun } from '../../lib/save-store';
+
   const COLS = 10;
   const ROWS = 20;
   const CELL = 30;
   const W = COLS * CELL;
   const H = ROWS * CELL;
-  const BEST_KEY = 'fang-tetris-best';
 
   const TYPES = ['I', 'J', 'L', 'O', 'S', 'T', 'Z'] as const;
   type TType = (typeof TYPES)[number];
@@ -372,16 +379,16 @@ import '../../styles/games.css';
 
   function gameOver() {
     mode = 'over';
-    if (score > best) {
-      best = score;
-      try {
-        localStorage.setItem(BEST_KEY, String(best));
-      } catch (e) {
-        /* ignore */
-      }
-    }
+    const isNewBest = score > best;
+    if (isNewBest) best = score;
     syncHud();
-    overlay('GAME OVER', '堆到顶了', `本局得分 <b>${score}</b> · 消掉 ${lines} 行<br>按 <b>空格</b> 再来一局`, '再来一局');
+    void recordRun('tetris', score, { lines, level });
+    overlay(
+      isNewBest ? 'NEW RECORD' : 'GAME OVER',
+      isNewBest ? '新纪录！' : '堆到顶了',
+      `本局得分 <b>${score}</b> · 消掉 ${lines} 行<br>按 <b>空格</b> 再来一局`,
+      '再来一局',
+    );
   }
 
   function overlay(kicker: string, title: string, desc: string, btn: string | null) {
@@ -651,11 +658,10 @@ import '../../styles/games.css';
     if (!ctx) return;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-    try {
-      best = Number(localStorage.getItem(BEST_KEY) || 0) || 0;
-    } catch (e) {
-      best = 0;
-    }
+    void readStat('tetris').then((rec) => {
+      best = Math.max(best, rec.best || 0);
+      syncHud();
+    });
 
     reset();
     mode = 'ready';

@@ -40,6 +40,22 @@
   margin-bottom: 1.7rem;
 }
 
+.gx-head-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.gx-head-row .gx-kicker {
+  margin-bottom: 0.4rem;
+}
+
+.gx-head-row .gx-title {
+  margin-bottom: 0;
+}
+
 .gx-kicker {
   margin: 0 0 0.55rem;
   font-family: var(--font-mono);

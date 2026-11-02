@@ -1,5 +1,6 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro';
+import PlayerBar from '../../components/PlayerBar.astro';
 import '../../styles/games.css';
 
 const games = [
@@ -9,7 +10,7 @@ const games = [
     en: 'SNAKE',
     desc: '最古老也最耐玩的那条蛇。吃掉光点变长，撞墙或咬到自己就结束。',
     tag: '上手 0 秒',
-    best: 'fang-snake-best',
+    best: 'snake',
   },
   {
     slug: 'tetris',
@@ -17,7 +18,7 @@ const games = [
     en: 'TETRIS',
     desc: '七种方块，一次消四行叫 Tetris。带幽灵落点、暂存区和连消计分。',
     tag: '会玩上瘾',
-    best: 'fang-tetris-best',
+    best: 'tetris',
   },
   {
     slug: '2048',
@@ -25,7 +26,7 @@ const games = [
     en: '2048',
     desc: '滑动合并相同数字，凑出 2048。看着简单，越到后面越需要规划。',
     tag: '最费脑',
-    best: 'fang-2048-best',
+    best: '2048',
   },
   {
     slug: 'breakout',
@@ -33,7 +34,7 @@ const games = [
     en: 'BREAKOUT',
     desc: '一块挡板，一颗球，满屏的砖。清完一屏难度上一档，三条命够不够？',
     tag: '最解压',
-    best: 'fang-breakout-best',
+    best: 'breakout',
   },
 ];
 ---
@@ -41,8 +42,13 @@ const games = [
 <BaseLayout title="游戏厅" description="森的游戏厅 · 四款用 Canvas 手写的经典小游戏，浏览器直接开玩">
   <div class="gx-page container-x">
     <header class="arc-head reveal is-visible">
-      <p class="gx-kicker">ARCADE · 游戏厅</p>
-      <h1 class="gx-title">随手玩两把</h1>
+      <div class="gx-head-row">
+        <div>
+          <p class="gx-kicker">ARCADE · 游戏厅</p>
+          <h1 class="gx-title">随手玩两把</h1>
+        </div>
+        <PlayerBar />
+      </div>
       <p class="gx-sub">
         四款经典小游戏，全部用 Canvas 从零手写，没有任何第三方游戏引擎。
         电脑上用键盘玩，手机也能上手。
@@ -184,9 +190,21 @@ const games = [
       }
     </div>
 
+    <section class="arc-stats reveal" id="arcStats">
+      <div class="arc-stats-head">
+        <h2 class="arc-stats-title">我的战绩</h2>
+        <span class="arc-stats-who" id="arcStatsWho">游客模式 · 明文存在本机</span>
+      </div>
+      <div class="arc-rows" id="arcRows"></div>
+      <p class="arc-stats-foot">
+        <i class="ri-shield-keyhole-line" aria-hidden="true"></i>
+        建立档案后，记录会加密保存在这台设备；换设备请用「导出 / 导入」带走。
+      </p>
+    </section>
+
     <p class="arc-tip reveal">
       <i class="ri-information-line" aria-hidden="true"></i>
-      最高分存在浏览器本地，换设备不会同步。手机建议横屏或放大页面玩。
+      战绩存在浏览器本地，换设备不会同步。手机建议横屏或放大页面玩。
     </p>
   </div>
 </BaseLayout>
@@ -337,6 +355,103 @@ const games = [
     opacity: 0.8;
   }
 
+  /* ---------- 我的战绩 ---------- */
+  .arc-stats {
+    margin-top: 1.5rem;
+    padding: 1.2rem 1.25rem 1rem;
+    border-radius: 20px;
+    background: color-mix(in oklab, var(--color-ink-2) 74%, transparent);
+    border: 1px solid color-mix(in oklab, #ffffff 8%, transparent);
+  }
+
+  .arc-stats-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.8rem;
+    margin-bottom: 0.85rem;
+  }
+
+  .arc-stats-title {
+    margin: 0;
+    font-size: 1rem;
+    font-family: var(--font-display);
+  }
+
+  .arc-stats-who {
+    font-family: var(--font-mono);
+    font-size: 0.66rem;
+    letter-spacing: 0.04em;
+    color: var(--color-fog);
+  }
+
+  .arc-rows {
+    display: grid;
+    gap: 0.3rem;
+  }
+
+  .arc-row {
+    display: grid;
+    grid-template-columns: 1.4fr 1fr 0.8fr 1fr;
+    gap: 0.5rem;
+    align-items: center;
+    padding: 0.5rem 0.65rem;
+    border-radius: 10px;
+    font-size: 0.78rem;
+    color: var(--color-mist);
+    background: color-mix(in oklab, #ffffff 3%, transparent);
+  }
+
+  .arc-row--head {
+    background: transparent;
+    color: var(--color-fog);
+    font-family: var(--font-mono);
+    font-size: 0.62rem;
+    letter-spacing: 0.14em;
+    padding-bottom: 0.1rem;
+  }
+
+  .arc-row b {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    color: #fff;
+    font-weight: 700;
+  }
+
+  .arc-row span:nth-child(n + 2) {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .arc-stats-foot {
+    margin: 0.85rem 0 0;
+    padding-top: 0.7rem;
+    border-top: 1px solid color-mix(in oklab, #ffffff 6%, transparent);
+    font-size: 0.7rem;
+    line-height: 1.7;
+    color: var(--color-fog);
+    display: flex;
+    gap: 0.4rem;
+    align-items: flex-start;
+  }
+
+  .arc-stats-foot i {
+    color: var(--color-cyan);
+    margin-top: 0.12rem;
+  }
+
+  @media (max-width: 640px) {
+    .arc-row {
+      grid-template-columns: 1.2fr 1fr 0.9fr;
+    }
+    .arc-row span:nth-child(4) {
+      display: none;
+    }
+    .arc-row--head span:nth-child(4) {
+      display: none;
+    }
+  }
+
   @media (max-width: 780px) {
     .arc-grid {
       grid-template-columns: 1fr;
@@ -347,23 +462,91 @@ const games = [
     background: rgba(255, 255, 255, 0.8);
     border-color: rgba(11, 16, 32, 0.08);
   }
+
+  :global(:root[data-theme='light']) .arc-stats {
+    background: rgba(255, 255, 255, 0.8);
+    border-color: rgba(11, 16, 32, 0.08);
+  }
+
+  :global(:root[data-theme='light']) .arc-row {
+    color: #3b4356;
+    background: rgba(11, 16, 32, 0.03);
+  }
+
+  :global(:root[data-theme='light']) .arc-row b {
+    color: #10131d;
+  }
 </style>
 
 <script>
-  function fillBest() {
-    document.querySelectorAll<HTMLElement>('[data-best]').forEach((el) => {
-      const key = el.dataset.best || '';
-      let v = '—';
-      try {
-        const raw = localStorage.getItem(key);
-        if (raw) v = Number(raw).toLocaleString('en-US');
-      } catch (e) {
-        /* ignore */
-      }
-      el.textContent = v;
-    });
+  import { store, readStat } from '../../lib/save-store';
+
+  const LIST = [
+    { slug: 'snake', name: '贪吃蛇' },
+    { slug: 'tetris', name: '俄罗斯方块' },
+    { slug: '2048', name: '2048' },
+    { slug: 'breakout', name: '打砖块' },
+  ];
+
+  const nf = (n: number) => (n ? n.toLocaleString('en-US') : '—');
+
+  function fmtDate(ts?: number) {
+    if (!ts) return '—';
+    const d = new Date(ts);
+    const p = (n: number) => String(n).padStart(2, '0');
+    return `${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
   }
 
-  document.addEventListener('astro:page-load', fillBest);
-  fillBest();
+  async function refresh() {
+    // 卡片上的最高分
+    for (const g of LIST) {
+      const rec = await readStat(g.slug);
+      const el = document.querySelector<HTMLElement>(`[data-best="${g.slug}"]`);
+      if (el) el.textContent = nf(rec.best || 0);
+    }
+
+    // 战绩表
+    const rows = document.getElementById('arcRows');
+    const who = document.getElementById('arcStatsWho');
+    if (!rows) return;
+
+    if (who) {
+      who.textContent =
+        store.state === 'unlocked'
+          ? `档案 · ${store.profileName || '我的档案'}（已加密）`
+          : store.state === 'locked'
+            ? '档案已锁定 · 显示游客记录'
+            : '游客模式 · 明文存在本机';
+    }
+
+    const head = `
+      <div class="arc-row arc-row--head">
+        <span>游戏</span><span>最高分</span><span>局数</span><span>最近一局</span>
+      </div>`;
+
+    const body: string[] = [];
+    let totalPlays = 0;
+    for (const g of LIST) {
+      const rec = await readStat(g.slug);
+      totalPlays += rec.plays || 0;
+      body.push(`
+        <div class="arc-row">
+          <span>${g.name}</span>
+          <b>${nf(rec.best || 0)}</b>
+          <span>${rec.plays ? rec.plays + ' 局' : '—'}</span>
+          <span>${rec.at ? `${nf(rec.last || 0)} · ${fmtDate(rec.at)}` : '—'}</span>
+        </div>`);
+    }
+
+    rows.innerHTML =
+      head +
+      body.join('') +
+      `<div class="arc-row arc-row--head" style="padding-top:.45rem">
+         <span>合计</span><span>—</span><span>${totalPlays} 局</span><span>—</span>
+       </div>`;
+  }
+
+  document.addEventListener('astro:page-load', refresh);
+  window.addEventListener('save:change', () => void refresh());
+  void refresh();
 </script>

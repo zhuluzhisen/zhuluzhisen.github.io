@@ -295,18 +295,27 @@ const stats = [
 
   .orb-glow {
     position: absolute;
-    inset: -18%;
+    inset: -6%;
     border-radius: 50%;
+    overflow: hidden;
+    /* 径向遮罩让光晕边缘自然淡出，而不是一圈硬边 */
+    -webkit-mask-image: radial-gradient(circle at 50% 50%, #000 40%, transparent 76%);
+    mask-image: radial-gradient(circle at 50% 50%, #000 40%, transparent 76%);
+  }
+
+  .orb-glow::before {
+    content: '';
+    position: absolute;
+    inset: -22%;
     background: conic-gradient(
       from 0deg,
       var(--color-cyan),
       var(--color-violet),
       var(--color-rose),
-      var(--color-lime),
       var(--color-cyan)
     );
-    filter: blur(52px);
-    opacity: 0.45;
+    filter: blur(46px);
+    opacity: 0.55;
     animation: var(--animate-spin-slow);
   }
 
@@ -480,11 +489,25 @@ const stats = [
       gap: 2.5rem;
     }
     .hero-visual {
-      order: -1;
-      min-height: 300px;
+      /* 移动端标题优先，球体置于其下，避免首屏看不到站点主题 */
+      min-height: 280px;
+      order: 1;
+    }
+    .hero-copy {
+      order: 0;
     }
     .grid-3 {
       grid-template-columns: repeat(2, 1fr);
+    }
+  }
+
+  @media (max-width: 900px) {
+    /* 单列布局下把浮动卡片收回容器内，避免溢出 */
+    .fc-1 {
+      left: 0;
+    }
+    .fc-2 {
+      right: 0;
     }
   }
 

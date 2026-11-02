@@ -4,6 +4,7 @@ dist/
 .output/
 _src/
 .tools/
+shots/
 .DS_Store
 .env
 .env.production

@@ -1,216 +1,420 @@
 ---
+/**
+ * 首页 —— 炫酷视觉版
+ * canvas 星际穿越 / 透视网格地面 / HUD 控制台 / 3D 倾斜卡片
+ * 私人内容已迁至 /secret
+ */
 import { getCollection } from 'astro:content';
 import BaseLayout from '../layouts/BaseLayout.astro';
-import PostCard from '../components/PostCard.astro';
 import Marquee from '../components/Marquee.astro';
-import Gallery from '../components/Gallery.astro';
-
-import Fang1 from '../assets/images/Fang1.jpg';
-import Fang2 from '../assets/images/Fang2.jpg';
-import Fang3 from '../assets/images/Fang3.JPG';
-import Fang4 from '../assets/images/Fang4.jpg';
 
 const allPosts = (await getCollection('blog', ({ data }) => !data.draft)).sort(
   (a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf(),
 );
 
 const latest = allPosts.slice(0, 3);
-const featured = allPosts.find((p) => p.data.featured) ?? allPosts[0];
+const postCount = allPosts.length;
+const photoCount = 4;
+const runningDays = Math.max(
+  1,
+  Math.floor((Date.now() - Date.UTC(2023, 8, 9)) / 86400000),
+);
 
-const shots = [
-  { src: Fang1, alt: '我最喜欢的一张', caption: '我最喜欢的一张' },
-  { src: Fang2, alt: '看着就很开心', caption: '看着就很开心' },
-  { src: Fang3, alt: '这张我也很喜欢', caption: '这张我也很喜欢' },
-  { src: Fang4, alt: '很Q', caption: '很Q' },
+const fmt = new Intl.DateTimeFormat('zh-CN', { month: '2-digit', day: '2-digit' });
+const fmtDate = (d: Date) => fmt.format(d);
+
+const sectors = [
+  {
+    href: '/blog',
+    no: '01',
+    icon: 'ri-quill-pen-line',
+    title: '文字',
+    en: 'WRITING',
+    desc: '随笔、公告与碎碎念，按时间倒序排好。',
+    tone: 'cyan',
+  },
+  {
+    href: '/gallery',
+    no: '02',
+    icon: 'ri-image-2-line',
+    title: '底片',
+    en: 'GALLERY',
+    desc: '黄昏、街角，和突然想按快门的那一秒。',
+    tone: 'violet',
+  },
+  {
+    href: '/archives',
+    no: '03',
+    icon: 'ri-archive-2-line',
+    title: '归档',
+    en: 'ARCHIVE',
+    desc: '所有条目按月归档，方便一次翻完。',
+    tone: 'lime',
+  },
+  {
+    href: '/secret',
+    no: '04',
+    icon: 'ri-lock-2-line',
+    title: '秘密档案',
+    en: 'CLASSIFIED',
+    desc: '不对外开放的那部分，进门请轻声。',
+    tone: 'rose',
+    secret: true,
+  },
 ];
 
-const tags = ['摄影', '旅行', '生活', '随笔', '公告', '光影'];
-
-const stats = [
-  { value: String(allPosts.length).padStart(2, '0'), label: '篇文章' },
-  { value: String(shots.length).padStart(2, '0'), label: '张照片' },
-  { value: 'Astro 7', label: '框架版本' },
-];
+const keywords = ['PHOTOGRAPHY', 'ASTRO 7', '夜色', '光影', '笔记', '绝密档案', 'LATE NIGHT'];
 ---
 
-<BaseLayout>
-  <!-- ============ HERO ============ -->
-  <section class="hero">
+<BaseLayout
+  title="芳 · FANG'S SPACE"
+  description="一个用 Astro 7 搭的个人空间：光影、文字，和一扇需要密码才推得开的门。"
+>
+  <!-- ==================== HERO ==================== -->
+  <section class="hero" id="hero">
+    <canvas id="warp" class="warp" aria-hidden="true"></canvas>
+    <div class="floor" aria-hidden="true"></div>
+    <div class="hero-veil" aria-hidden="true"></div>
+
     <div class="container-x hero-inner">
-      <div class="hero-copy">
-        <p class="eyebrow reveal">
-          <span class="eyebrow-dot"></span>
-          HELLO, THIS IS FANG
-        </p>
+      <div class="corner tl" aria-hidden="true"></div>
+      <div class="corner tr" aria-hidden="true"></div>
+      <div class="corner bl" aria-hidden="true"></div>
+      <div class="corner br" aria-hidden="true"></div>
 
-        <h1 class="hero-title reveal" style="--i:1">
-          <span class="line">记录光影，</span>
-          <span class="line text-gradient">也记录生活</span>
-        </h1>
-
-        <p class="hero-desc reveal" style="--i:2">
-          <span id="typewriter" class="tw"></span><span class="caret">▊</span>
-        </p>
-
-        <div class="hero-actions reveal" style="--i:3">
-          <a href="/blog" class="btn btn-primary">
-            <i class="ri-quill-pen-line" aria-hidden="true"></i>
-            开始阅读
-          </a>
-          <a href="/gallery" class="btn btn-ghost">
-            <i class="ri-image-2-line" aria-hidden="true"></i>
-            看看相册
-          </a>
-        </div>
-
-        <dl class="stats reveal" style="--i:4">
-          {
-            stats.map((s) => (
-              <div class="stat">
-                <dt>{s.value}</dt>
-                <dd>{s.label}</dd>
-              </div>
-            ))
-          }
-        </dl>
+      <div class="hud reveal">
+        <span class="hud-item">
+          <i class="hud-dot" aria-hidden="true"></i>
+          SYSTEM ONLINE
+        </span>
+        <span class="hud-sep" aria-hidden="true"></span>
+        <span class="hud-item hud-hide-sm">NODE · 37.5°N 121.4°E</span>
+        <span class="hud-sep hud-hide-sm" aria-hidden="true"></span>
+        <span class="hud-item" id="heroClock">--:--:--</span>
       </div>
 
-      <div class="hero-visual reveal is-visible" style="--i:2">
-        <div class="orb-wrap">
-          <div class="orb-glow" aria-hidden="true"></div>
-          <div class="orb">
-            <span class="orb-text">芳</span>
-          </div>
-          <span class="orb-ring ring-1" aria-hidden="true"></span>
-          <span class="orb-ring ring-2" aria-hidden="true"></span>
-        </div>
-        <div class="float-card fc-1 glass">
-          <i class="ri-camera-line" aria-hidden="true"></i>
-          <span>Photography</span>
-        </div>
-        <div class="float-card fc-2 glass">
-          <i class="ri-code-box-line" aria-hidden="true"></i>
-          <span>Astro 7</span>
-        </div>
+      <h1 class="mega reveal" style="--i:1">
+        <span class="mega-line">FANG'S</span>
+        <span class="mega-line mega-accent text-gradient" data-text="SPACE">SPACE</span>
+      </h1>
+
+      <p class="hero-sub reveal" style="--i:2">
+        <span class="brk" aria-hidden="true">[</span>
+        记录光影，也记录生活
+        <span class="brk" aria-hidden="true">]</span>
+      </p>
+
+      <p class="hero-type reveal" style="--i:3">
+        <span class="prompt" aria-hidden="true">&gt;</span>
+        <span id="type"></span><span class="caret" aria-hidden="true">▊</span>
+      </p>
+
+      <div class="hero-actions reveal" style="--i:4">
+        <a href="/secret" class="btn btn-primary btn-magnet">
+          <i class="ri-lock-2-line" aria-hidden="true"></i>
+          进入秘密档案
+        </a>
+        <a href="/blog" class="btn btn-ghost">
+          <i class="ri-arrow-right-line" aria-hidden="true"></i>
+          先随便看看
+        </a>
       </div>
+
+      <a href="#sectors" class="scroll-cue" aria-label="向下滚动">
+        <span class="cue-line" aria-hidden="true"></span>
+        SCROLL
+        <i class="ri-arrow-down-s-line" aria-hidden="true"></i>
+      </a>
     </div>
   </section>
 
-  <Marquee items={tags} speed={42} />
+  <Marquee items={keywords} speed={46} />
 
-  <!-- ============ 最新文章 ============ -->
-  <section class="section container-x">
+  <!-- ==================== 四个入口 ==================== -->
+  <section class="section container-x" id="sectors">
     <div class="section-head reveal">
       <div>
-        <p class="section-kicker">LATEST POSTS</p>
-        <h2 class="section-title">最新文章</h2>
+        <p class="section-kicker">SECTORS · 四个区</p>
+        <h2 class="section-title">从这里进去</h2>
       </div>
-      <a href="/blog" class="section-more">
-        全部文章
-        <i class="ri-arrow-right-line" aria-hidden="true"></i>
-      </a>
+      <p class="section-note">鼠标移上去，卡片会跟着你转</p>
     </div>
 
-    <div class="grid-3">
+    <div class="sector-grid">
       {
-        latest.map((post, i) => (
-          <PostCard
-            href={`/blog/${post.id}/`}
-            title={post.data.title}
-            description={post.data.description}
-            pubDate={post.data.pubDate}
-            tags={post.data.tags}
-            cover={post.data.cover ?? post.data.gallery[0]?.src}
-            featured={post.data.featured}
-            index={i}
-          />
+        sectors.map((s, i) => (
+          <a
+            class:list={['sector', 'glass', s.secret && 'is-secret']}
+            href={s.href}
+            data-tone={s.tone}
+            style={`--i:${i}`}
+          >
+            <span class="sector-glow" aria-hidden="true" />
+            <span class="sector-top">
+              <span class="sector-no">{s.no}</span>
+              <span class="sector-icon">
+                <i class={s.icon} aria-hidden="true" />
+              </span>
+            </span>
+            <h3 class="sector-title">{s.title}</h3>
+            <p class="sector-en">{s.en}</p>
+            <p class="sector-desc">{s.desc}</p>
+            <span class="sector-go">
+              进入
+              <i class="ri-arrow-right-line" aria-hidden="true" />
+            </span>
+          </a>
         ))
       }
     </div>
   </section>
 
-  <!-- ============ 精选相册 ============ -->
-  {
-    featured && (
-      <section class="section container-x">
-        <div class="section-head reveal">
-          <div>
-            <p class="section-kicker">GALLERY</p>
-            <h2 class="section-title">精选相册</h2>
-          </div>
-          <a href="/gallery" class="section-more">
-            全部照片
-            <i class="ri-arrow-right-line" aria-hidden="true" />
-          </a>
-        </div>
-
-        <div class="gallery-panel glass glass-edge reveal">
-          <Gallery shots={shots} columns={2} />
-        </div>
-      </section>
-    )
-  }
-
-  <!-- ============ CTA ============ -->
+  <!-- ==================== HUD 控制台 ==================== -->
   <section class="section container-x">
-    <div class="cta glass glass-edge reveal">
-      <div class="cta-inner">
-        <p class="section-kicker">KEEP IN TOUCH</p>
-        <h2 class="cta-title">想聊聊？随时来找我</h2>
-        <p class="cta-desc">
-          摄影约拍、技术交流、或者只是想打个招呼 —— 都欢迎。
-        </p>
-        <div class="cta-actions">
-          <a href="/friends" class="btn btn-primary">
-            <i class="ri-group-line" aria-hidden="true"></i>
-            友链
-          </a>
-          <a href="/about" class="btn btn-ghost">
-            <i class="ri-user-smile-line" aria-hidden="true"></i>
-            关于我
-          </a>
+    <div class="console glass glass-edge reveal">
+      <div class="console-head">
+        <p class="section-kicker">TELEMETRY · 站点状态</p>
+        <div class="console-time">
+          <span id="consoleDate">----</span>
+          <span class="console-clock" id="consoleClock">--:--:--</span>
         </div>
       </div>
+
+      <div class="tele-grid">
+        <div class="tele">
+          <span class="tele-v" data-count={String(postCount).padStart(2, '0')}>00</span>
+          <span class="tele-l">篇文章</span>
+        </div>
+        <div class="tele">
+          <span class="tele-v" data-count={String(photoCount).padStart(2, '0')}>00</span>
+          <span class="tele-l">张底片</span>
+        </div>
+        <div class="tele">
+          <span class="tele-v" data-count={String(runningDays)}>0</span>
+          <span class="tele-l">运行天数</span>
+        </div>
+        <div class="tele tele-signal">
+          <span class="tele-v">
+            {
+              [0, 1, 2, 3, 4].map((n) => (
+                <i class="bar" style={`--h:${28 + n * 18}%`} aria-hidden="true" />
+              ))
+            }
+          </span>
+          <span class="tele-l">信号良好</span>
+        </div>
+      </div>
+
+      <ul class="feed">
+        {
+          latest.map((post) => (
+            <li>
+              <a href={`/blog/${post.id}/`}>
+                <span class="feed-dot" aria-hidden="true" />
+                <span class="feed-title">{post.data.title}</span>
+                <span class="feed-date">{fmtDate(post.data.pubDate)}</span>
+              </a>
+            </li>
+          ))
+        }
+      </ul>
+    </div>
+  </section>
+
+  <!-- ==================== 秘密档案入口 ==================== -->
+  <section class="section container-x">
+    <a class="vault reveal" href="/secret">
+      <span class="vault-tape" aria-hidden="true">TOP SECRET</span>
+      <div class="vault-body">
+        <span class="vault-lock" aria-hidden="true">
+          <i class="ri-lock-2-line"></i>
+        </span>
+        <div class="vault-copy">
+          <p class="section-kicker">CLASSIFIED ACCESS</p>
+          <h2 class="vault-title">秘密档案</h2>
+          <p class="vault-desc">
+            照片、碎碎念，和没打算公开的那些字。
+            <span class="redact" aria-hidden="true">████████</span>
+          </p>
+        </div>
+        <span class="vault-cta">
+          解密进入
+          <i class="ri-arrow-right-up-line" aria-hidden="true"></i>
+        </span>
+      </div>
+      <span class="vault-scan" aria-hidden="true"></span>
+    </a>
+  </section>
+
+  <!-- ==================== 尾部 CTA ==================== -->
+  <section class="section container-x closing">
+    <p class="closing-kicker reveal">END OF TRANSMISSION</p>
+    <h2 class="closing-title reveal" style="--i:1">
+      想到什么，<span class="text-gradient">随时敲我</span>
+    </h2>
+    <div class="closing-actions reveal" style="--i:2">
+      <a href="/about" class="btn btn-primary">
+        <i class="ri-user-smile-line" aria-hidden="true"></i>
+        关于我
+      </a>
+      <a href="/friends" class="btn btn-ghost">
+        <i class="ri-group-line" aria-hidden="true"></i>
+        友链
+      </a>
     </div>
   </section>
 </BaseLayout>
 
 <style>
-  /* ============ HERO ============ */
+  /* ==================== HERO ==================== */
   .hero {
+    --mega: #ffffff;
     position: relative;
-    padding: 5.5rem 0 4.5rem;
+    min-height: min(92vh, 880px);
+    display: grid;
+    align-items: center;
+    padding: 3.5rem 0 6rem;
+    overflow: clip;
+  }
+
+  .warp {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    display: block;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* 透视网格地面 */
+  .floor {
+    position: absolute;
+    left: -30%;
+    right: -30%;
+    bottom: -12%;
+    height: 62%;
+    z-index: 0;
+    pointer-events: none;
+    background-image:
+      linear-gradient(
+        to right,
+        color-mix(in oklab, var(--color-cyan) 30%, transparent) 0 1px,
+        transparent 1px 100%
+      ),
+      linear-gradient(
+        to bottom,
+        color-mix(in oklab, var(--color-violet) 26%, transparent) 0 1px,
+        transparent 1px 100%
+      );
+    background-size: 62px 62px;
+    transform: perspective(560px) rotateX(72deg);
+    transform-origin: 50% 100%;
+    -webkit-mask-image: radial-gradient(ellipse 55% 70% at 50% 60%, #000 10%, transparent 72%);
+    mask-image: radial-gradient(ellipse 55% 70% at 50% 60%, #000 10%, transparent 72%);
+    opacity: 0.55;
+    animation: floor-drift 9s linear infinite;
+  }
+
+  @keyframes floor-drift {
+    from {
+      background-position:
+        0 0,
+        0 0;
+    }
+    to {
+      background-position:
+        0 62px,
+        0 62px;
+    }
+  }
+
+  .hero-veil {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background: radial-gradient(
+      ellipse 78% 62% at 50% 44%,
+      transparent 20%,
+      color-mix(in oklab, var(--color-void) 72%, transparent) 92%
+    );
   }
 
   .hero-inner {
-    display: grid;
-    grid-template-columns: 1.15fr 0.85fr;
-    align-items: center;
-    gap: 3.5rem;
+    position: relative;
+    z-index: 2;
+    text-align: center;
+    padding-block: 1rem;
   }
 
-  .eyebrow {
+  /* 四角括号 */
+  .corner {
+    position: absolute;
+    width: 26px;
+    height: 26px;
+    border: 1px solid color-mix(in oklab, var(--color-cyan) 45%, transparent);
+    opacity: 0.7;
+    pointer-events: none;
+  }
+
+  .tl {
+    top: 0;
+    left: 0;
+    border-right: 0;
+    border-bottom: 0;
+  }
+  .tr {
+    top: 0;
+    right: 0;
+    border-left: 0;
+    border-bottom: 0;
+  }
+  .bl {
+    bottom: 0;
+    left: 0;
+    border-right: 0;
+    border-top: 0;
+  }
+  .br {
+    bottom: 0;
+    right: 0;
+    border-left: 0;
+    border-top: 0;
+  }
+
+  /* HUD 状态条 */
+  .hud {
     display: inline-flex;
     align-items: center;
-    gap: 0.6rem;
-    margin: 0 0 1.4rem;
-    padding: 0.35rem 0.9rem;
+    gap: 0.85rem;
+    padding: 0.4rem 1.05rem;
     border-radius: 999px;
-    border: 1px solid color-mix(in oklab, var(--color-cyan) 28%, transparent);
-    background: color-mix(in oklab, var(--color-cyan) 8%, transparent);
+    border: 1px solid color-mix(in oklab, #ffffff 10%, transparent);
+    background: color-mix(in oklab, var(--color-ink-2) 62%, transparent);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
     font-family: var(--font-mono);
-    font-size: 0.7rem;
-    letter-spacing: 0.22em;
-    color: var(--color-cyan);
+    font-size: 0.64rem;
+    letter-spacing: 0.16em;
+    color: var(--color-mist);
+    margin-bottom: 2.2rem;
   }
 
-  .eyebrow-dot {
+  .hud-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.42rem;
+    white-space: nowrap;
+  }
+
+  .hud-dot {
     width: 6px;
     height: 6px;
     border-radius: 50%;
-    background: var(--color-cyan);
-    box-shadow: 0 0 10px var(--color-cyan);
-    animation: pulse-dot 2.4s ease-in-out infinite;
+    background: var(--color-lime);
+    box-shadow: 0 0 10px var(--color-lime);
+    animation: pulse-dot 2.2s ease-in-out infinite;
   }
 
   @keyframes pulse-dot {
@@ -220,192 +424,200 @@ const stats = [
       opacity: 1;
     }
     50% {
-      transform: scale(1.5);
-      opacity: 0.5;
+      transform: scale(1.4);
+      opacity: 0.45;
     }
   }
 
-  .hero-title {
-    font-size: clamp(2.6rem, 6.4vw, 4.6rem);
-    line-height: 1.12;
-    margin-bottom: 1.3rem;
+  .hud-sep {
+    width: 1px;
+    height: 10px;
+    background: color-mix(in oklab, #ffffff 16%, transparent);
   }
 
-  .hero-title .line {
+  /* 巨型标题 */
+  .mega {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: clamp(3.1rem, 12.2vw, 9.4rem);
+    line-height: 0.86;
+    letter-spacing: -0.045em;
+    margin: 0 0 1.6rem;
+    color: var(--mega);
+    text-shadow:
+      0 0 26px color-mix(in oklab, var(--color-cyan) 32%, transparent),
+      0 0 90px color-mix(in oklab, var(--color-violet) 24%, transparent);
+  }
+
+  .mega-line {
     display: block;
+    position: relative;
+    width: fit-content;
+    margin-inline: auto;
   }
 
-  .hero-desc {
-    margin: 0 0 2rem;
-    font-size: 1.02rem;
-    line-height: 1.85;
+  .mega-accent {
+    font-style: italic;
+    letter-spacing: -0.02em;
+    -webkit-text-fill-color: transparent;
+    text-shadow: none;
+  }
+
+  /* 第二行扫光 */
+  .mega-accent::after {
+    content: attr(data-text);
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    background: linear-gradient(
+      100deg,
+      transparent 40%,
+      color-mix(in oklab, #ffffff 80%, transparent) 50%,
+      transparent 60%
+    );
+    background-size: 260% 100%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    pointer-events: none;
+    animation: sheen 6s ease-in-out infinite;
+  }
+
+  @keyframes sheen {
+    0%,
+    100% {
+      background-position: 140% 0;
+      opacity: 0;
+    }
+    20% {
+      opacity: 0.75;
+    }
+    60% {
+      background-position: -40% 0;
+      opacity: 0;
+    }
+  }
+
+  .hero-sub {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.6rem;
+    margin: 0 0 1rem;
+    font-family: var(--font-display);
+    font-size: clamp(0.95rem, 2.4vw, 1.18rem);
+    letter-spacing: 0.32em;
+    color: var(--color-mist);
+    text-indent: 0.32em;
+  }
+
+  .brk {
+    color: var(--color-cyan);
+    opacity: 0.75;
+    font-family: var(--font-mono);
+    letter-spacing: 0;
+  }
+
+  .hero-type {
+    margin: 0 auto 2.4rem;
+    max-width: 46ch;
+    min-height: 1.8em;
+    font-family: var(--font-mono);
+    font-size: 0.88rem;
     color: var(--color-fog);
-    min-height: 1.85em;
+  }
+
+  .prompt {
+    color: var(--color-cyan);
+    margin-right: 0.5rem;
   }
 
   .caret {
     color: var(--color-cyan);
     animation: var(--animate-blink);
-    margin-left: 2px;
+    margin-left: 1px;
   }
 
   .hero-actions {
     display: flex;
     flex-wrap: wrap;
+    justify-content: center;
     gap: 0.85rem;
-    margin-bottom: 2.6rem;
+    margin-bottom: 3.4rem;
   }
 
-  .stats {
-    display: flex;
-    gap: 2.2rem;
-    margin: 0;
-  }
-
-  .stat dt {
-    font-family: var(--font-display);
-    font-size: 1.7rem;
-    font-weight: 700;
-    color: #fff;
-    line-height: 1.1;
-  }
-
-  .stat dd {
-    margin: 0.2rem 0 0;
-    font-size: 0.74rem;
-    letter-spacing: 0.14em;
-    color: var(--color-fog);
-  }
-
-  /* ---- 视觉球 ---- */
-  .hero-visual {
+  .btn-magnet {
     position: relative;
-    display: grid;
-    place-items: center;
-    min-height: 380px;
   }
 
-  .orb-wrap {
-    position: relative;
-    display: grid;
-    place-items: center;
-    width: min(320px, 72vw);
-    aspect-ratio: 1;
-  }
-
-  .orb-glow {
-    position: absolute;
-    inset: -6%;
-    border-radius: 50%;
-    overflow: hidden;
-    /* 径向遮罩让光晕边缘自然淡出，而不是一圈硬边 */
-    -webkit-mask-image: radial-gradient(circle at 50% 50%, #000 40%, transparent 76%);
-    mask-image: radial-gradient(circle at 50% 50%, #000 40%, transparent 76%);
-  }
-
-  .orb-glow::before {
+  .btn-magnet::before {
     content: '';
     position: absolute;
-    inset: -22%;
-    background: conic-gradient(
-      from 0deg,
-      var(--color-cyan),
-      var(--color-violet),
-      var(--color-rose),
-      var(--color-cyan)
-    );
-    filter: blur(46px);
-    opacity: 0.55;
-    animation: var(--animate-spin-slow);
+    inset: -6px;
+    border-radius: inherit;
+    background: linear-gradient(120deg, var(--color-cyan), var(--color-violet), var(--color-rose));
+    filter: blur(16px);
+    opacity: 0.5;
+    z-index: -1;
+    animation: glow-breathe 3.6s ease-in-out infinite;
   }
 
-  .orb {
-    position: relative;
-    display: grid;
-    place-items: center;
-    width: 68%;
-    aspect-ratio: 1;
-    border-radius: 50%;
-    background:
-      radial-gradient(circle at 32% 26%, rgba(255, 255, 255, 0.28), transparent 48%),
-      linear-gradient(150deg, #131a30, #070911 70%);
-    border: 1px solid color-mix(in oklab, #ffffff 14%, transparent);
-    box-shadow:
-      inset 0 0 60px rgba(0, 0, 0, 0.75),
-      0 30px 80px -30px rgba(0, 0, 0, 0.9);
-    animation: var(--animate-float-slow);
+  @keyframes glow-breathe {
+    0%,
+    100% {
+      opacity: 0.32;
+    }
+    50% {
+      opacity: 0.62;
+    }
   }
 
-  .orb-text {
-    font-family: var(--font-display);
-    font-size: clamp(3.2rem, 8vw, 5rem);
-    font-weight: 700;
-    background: linear-gradient(140deg, #fff, var(--color-cyan) 55%, var(--color-violet));
-    -webkit-background-clip: text;
-    background-clip: text;
-    -webkit-text-fill-color: transparent;
-  }
-
-  .orb-ring {
-    position: absolute;
-    border-radius: 50%;
-    border: 1px solid color-mix(in oklab, #ffffff 10%, transparent);
-  }
-
-  .ring-1 {
-    inset: 4%;
-    animation: var(--animate-spin-slow);
-    border-top-color: var(--color-cyan);
-    border-right-color: transparent;
-  }
-
-  .ring-2 {
-    inset: -8%;
-    animation: var(--animate-spin-slow) reverse;
-    animation-duration: 26s;
-    border-bottom-color: var(--color-rose);
-    border-left-color: transparent;
-  }
-
-  .float-card {
-    position: absolute;
+  /* 滚动提示 */
+  .scroll-cue {
     display: inline-flex;
+    flex-direction: column;
     align-items: center;
-    gap: 0.5rem;
-    padding: 0.55rem 0.95rem;
-    border-radius: 14px;
-    font-size: 0.76rem;
+    gap: 0.45rem;
     font-family: var(--font-mono);
-    letter-spacing: 0.06em;
-    color: var(--color-mist);
-    box-shadow: 0 18px 40px -22px rgba(0, 0, 0, 0.95);
+    font-size: 0.6rem;
+    letter-spacing: 0.32em;
+    color: var(--color-fog);
+    transition: color 0.3s ease;
   }
 
-  .float-card i {
-    font-size: 1rem;
+  .scroll-cue:hover {
     color: var(--color-cyan);
   }
 
-  .fc-1 {
-    top: 8%;
-    left: -6%;
-    animation: var(--animate-float-slow);
+  .cue-line {
+    width: 1px;
+    height: 34px;
+    background: linear-gradient(
+      to bottom,
+      transparent,
+      color-mix(in oklab, var(--color-cyan) 85%, transparent)
+    );
+    animation: cue 2.2s ease-in-out infinite;
+    transform-origin: top;
   }
 
-  .fc-2 {
-    bottom: 10%;
-    right: -6%;
-    animation: var(--animate-float-slow);
-    animation-delay: -4s;
+  @keyframes cue {
+    0% {
+      transform: scaleY(0.2);
+      opacity: 0.3;
+    }
+    50% {
+      transform: scaleY(1);
+      opacity: 1;
+    }
+    100% {
+      transform: scaleY(0.2);
+      opacity: 0.3;
+    }
   }
 
-  .fc-2 i {
-    color: var(--color-rose);
-  }
-
-  /* ============ 通用 section ============ */
+  /* ==================== 通用 section ==================== */
   .section {
-    padding: 4.5rem 0 0;
+    padding: 5rem 0 0;
   }
 
   .section-head {
@@ -419,131 +631,826 @@ const stats = [
   .section-kicker {
     margin: 0 0 0.4rem;
     font-family: var(--font-mono);
-    font-size: 0.68rem;
-    letter-spacing: 0.26em;
+    font-size: 0.66rem;
+    letter-spacing: 0.24em;
     color: var(--color-cyan);
   }
 
   .section-title {
-    font-size: clamp(1.5rem, 3.4vw, 2.1rem);
+    font-size: clamp(1.5rem, 3.6vw, 2.2rem);
   }
 
-  .section-more {
+  .section-note {
+    margin: 0;
+    font-size: 0.78rem;
+    color: var(--color-fog);
+    font-family: var(--font-mono);
+    white-space: nowrap;
+  }
+
+  /* ==================== 四张入口卡 ==================== */
+  .sector-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1.1rem;
+    perspective: 1200px;
+  }
+
+  .sector {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    padding: 1.5rem 1.35rem 1.35rem;
+    border-radius: 22px;
+    min-height: 250px;
+    isolation: isolate;
+    transform-style: preserve-3d;
+    transform: rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg)) translateY(var(--lift, 0px));
+    transition:
+      transform 0.4s cubic-bezier(0.22, 1, 0.36, 1),
+      border-color 0.4s ease,
+      box-shadow 0.4s ease;
+    will-change: transform;
+  }
+
+  .sector-glow {
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    z-index: -1;
+    opacity: 0;
+    transition: opacity 0.4s ease;
+    background: radial-gradient(
+      320px circle at var(--mx, 50%) var(--my, 50%),
+      color-mix(in oklab, var(--tone, var(--color-cyan)) 22%, transparent),
+      transparent 65%
+    );
+  }
+
+  .sector:hover .sector-glow {
+    opacity: 1;
+  }
+
+  .sector:hover {
+    --lift: -6px;
+    border-color: color-mix(in oklab, var(--tone, var(--color-cyan)) 45%, transparent);
+    box-shadow:
+      0 30px 60px -34px color-mix(in oklab, var(--tone, var(--color-cyan)) 75%, transparent),
+      0 0 0 1px color-mix(in oklab, var(--tone, var(--color-cyan)) 22%, transparent) inset;
+  }
+
+  .sector[data-tone='cyan'] {
+    --tone: var(--color-cyan);
+  }
+  .sector[data-tone='violet'] {
+    --tone: var(--color-violet);
+  }
+  .sector[data-tone='lime'] {
+    --tone: var(--color-lime);
+  }
+  .sector[data-tone='rose'] {
+    --tone: var(--color-rose);
+  }
+
+  .sector-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1.5rem;
+  }
+
+  .sector-no {
+    font-family: var(--font-mono);
+    font-size: 0.66rem;
+    letter-spacing: 0.2em;
+    color: var(--color-fog);
+  }
+
+  .sector-icon {
+    display: inline-grid;
+    place-items: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 13px;
+    font-size: 1.15rem;
+    color: var(--tone, var(--color-cyan));
+    background: color-mix(in oklab, var(--tone, var(--color-cyan)) 13%, transparent);
+    border: 1px solid color-mix(in oklab, var(--tone, var(--color-cyan)) 26%, transparent);
+    transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .sector:hover .sector-icon {
+    transform: translateZ(28px) scale(1.06);
+  }
+
+  .sector-title {
+    font-size: 1.28rem;
+    margin: 0 0 0.2rem;
+    letter-spacing: -0.01em;
+  }
+
+  .sector-en {
+    margin: 0 0 0.7rem;
+    font-family: var(--font-mono);
+    font-size: 0.6rem;
+    letter-spacing: 0.26em;
+    color: var(--tone, var(--color-cyan));
+    opacity: 0.8;
+  }
+
+  .sector-desc {
+    margin: 0 0 1.4rem;
+    font-size: 0.82rem;
+    line-height: 1.7;
+    color: var(--color-fog);
+  }
+
+  .sector-go {
+    margin-top: auto;
     display: inline-flex;
     align-items: center;
-    gap: 0.35rem;
-    font-size: 0.85rem;
-    color: var(--color-fog);
-    padding-bottom: 0.25rem;
-    transition: color 0.25s ease;
+    gap: 0.3rem;
+    font-size: 0.74rem;
+    font-family: var(--font-mono);
+    letter-spacing: 0.1em;
+    color: var(--color-mist);
+    transition: gap 0.3s ease;
   }
 
-  .section-more:hover {
-    color: var(--color-cyan);
+  .sector:hover .sector-go {
+    gap: 0.6rem;
+    color: var(--tone, var(--color-cyan));
   }
 
-  .grid-3 {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 1.4rem;
-  }
-
-  .gallery-panel {
-    padding: 1.4rem;
-    border-radius: 26px;
-  }
-
-  /* ============ CTA ============ */
-  .cta {
-    border-radius: 28px;
-    padding: 3.5rem 2rem;
-    text-align: center;
+  .is-secret {
     background:
-      radial-gradient(ellipse 70% 130% at 50% 0%, color-mix(in oklab, var(--color-violet) 18%, transparent), transparent),
-      color-mix(in oklab, var(--color-ink-2) 72%, transparent);
+      repeating-linear-gradient(
+        -45deg,
+        color-mix(in oklab, var(--color-rose) 5%, transparent) 0 10px,
+        transparent 10px 20px
+      ),
+      color-mix(in oklab, var(--color-ink-2) 78%, transparent);
   }
 
-  .cta-title {
-    font-size: clamp(1.6rem, 4vw, 2.4rem);
-    margin-bottom: 0.7rem;
+  /* ==================== HUD 控制台 ==================== */
+  .console {
+    padding: 1.6rem 1.7rem 1.4rem;
+    border-radius: 24px;
   }
 
-  .cta-desc {
-    margin: 0 auto 1.8rem;
-    max-width: 44ch;
+  .console-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding-bottom: 1.1rem;
+    border-bottom: 1px solid color-mix(in oklab, #ffffff 7%, transparent);
+  }
+
+  .console-time {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 0.6rem;
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.1em;
     color: var(--color-fog);
-    font-size: 0.92rem;
   }
 
-  .cta-actions {
+  .console-clock {
+    color: var(--color-cyan);
+    font-size: 0.86rem;
+    letter-spacing: 0.12em;
+  }
+
+  .tele-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1rem;
+    padding: 1.3rem 0;
+  }
+
+  .tele {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    padding-left: 0.9rem;
+    border-left: 1px solid color-mix(in oklab, #ffffff 8%, transparent);
+  }
+
+  .tele:first-child {
+    padding-left: 0;
+    border-left: 0;
+  }
+
+  .tele-v {
+    display: inline-flex;
+    align-items: flex-end;
+    gap: 3px;
+    height: 2rem;
+    font-family: var(--font-display);
+    font-size: 1.75rem;
+    font-weight: 700;
+    line-height: 1;
+    color: #fff;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .tele-l {
+    font-size: 0.72rem;
+    letter-spacing: 0.1em;
+    color: var(--color-fog);
+  }
+
+  .tele-signal .tele-v {
+    gap: 4px;
+  }
+
+  .bar {
+    display: block;
+    width: 5px;
+    height: var(--h);
+    border-radius: 3px;
+    background: linear-gradient(to top, var(--color-cyan), var(--color-violet));
+    animation: bar-breathe 1.8s ease-in-out infinite;
+    opacity: 0.85;
+  }
+
+  .bar:nth-child(2) {
+    animation-delay: 0.15s;
+  }
+  .bar:nth-child(3) {
+    animation-delay: 0.3s;
+  }
+  .bar:nth-child(4) {
+    animation-delay: 0.45s;
+  }
+  .bar:nth-child(5) {
+    animation-delay: 0.6s;
+  }
+
+  @keyframes bar-breathe {
+    0%,
+    100% {
+      transform: scaleY(0.72);
+      opacity: 0.55;
+    }
+    50% {
+      transform: scaleY(1);
+      opacity: 1;
+    }
+  }
+
+  .feed {
+    list-style: none;
+    margin: 0;
+    padding: 0.35rem 0 0;
+    border-top: 1px solid color-mix(in oklab, #ffffff 7%, transparent);
+  }
+
+  .feed a {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    padding: 0.62rem 0.2rem;
+    font-size: 0.86rem;
+    color: var(--color-mist);
+    border-bottom: 1px solid color-mix(in oklab, #ffffff 4%, transparent);
+    transition:
+      color 0.25s ease,
+      padding-left 0.25s ease;
+  }
+
+  .feed li:last-child a {
+    border-bottom: 0;
+  }
+
+  .feed a:hover {
+    color: #fff;
+    padding-left: 0.55rem;
+  }
+
+  .feed-dot {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: var(--color-cyan);
+    box-shadow: 0 0 8px var(--color-cyan);
+    flex: none;
+  }
+
+  .feed-title {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .feed-date {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    color: var(--color-fog);
+    flex: none;
+  }
+
+  /* ==================== 秘密档案入口 ==================== */
+  .vault {
+    position: relative;
+    display: block;
+    border-radius: 26px;
+    overflow: hidden;
+    border: 1px solid color-mix(in oklab, var(--color-rose) 30%, transparent);
+    background:
+      radial-gradient(
+        ellipse 60% 120% at 82% 0%,
+        color-mix(in oklab, var(--color-rose) 16%, transparent),
+        transparent 70%
+      ),
+      color-mix(in oklab, var(--color-ink-2) 82%, transparent);
+    transition:
+      transform 0.4s cubic-bezier(0.22, 1, 0.36, 1),
+      border-color 0.4s ease,
+      box-shadow 0.4s ease;
+  }
+
+  .vault:hover {
+    transform: translateY(-4px);
+    border-color: color-mix(in oklab, var(--color-rose) 60%, transparent);
+    box-shadow: 0 34px 70px -40px color-mix(in oklab, var(--color-rose) 80%, transparent);
+  }
+
+  .vault-tape {
+    position: absolute;
+    top: 16px;
+    right: -44px;
+    transform: rotate(38deg);
+    padding: 0.28rem 3.2rem;
+    font-family: var(--font-mono);
+    font-size: 0.56rem;
+    letter-spacing: 0.3em;
+    color: #1a0710;
+    background: color-mix(in oklab, var(--color-rose) 88%, #fff);
+    z-index: 2;
+  }
+
+  .vault-body {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    padding: 2.2rem 2.1rem;
+  }
+
+  .vault-lock {
+    display: grid;
+    place-items: center;
+    width: 62px;
+    height: 62px;
+    flex: none;
+    border-radius: 20px;
+    font-size: 1.5rem;
+    color: var(--color-rose);
+    background: color-mix(in oklab, var(--color-rose) 12%, transparent);
+    border: 1px solid color-mix(in oklab, var(--color-rose) 34%, transparent);
+    box-shadow: 0 0 40px -8px color-mix(in oklab, var(--color-rose) 55%, transparent);
+    animation: lock-breathe 3.2s ease-in-out infinite;
+  }
+
+  @keyframes lock-breathe {
+    0%,
+    100% {
+      box-shadow: 0 0 30px -10px color-mix(in oklab, var(--color-rose) 50%, transparent);
+    }
+    50% {
+      box-shadow: 0 0 52px -6px color-mix(in oklab, var(--color-rose) 75%, transparent);
+    }
+  }
+
+  .vault-copy {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .vault-title {
+    font-size: clamp(1.4rem, 3.2vw, 1.9rem);
+    margin: 0 0 0.35rem;
+  }
+
+  .vault-desc {
+    margin: 0;
+    font-size: 0.86rem;
+    color: var(--color-fog);
+  }
+
+  .redact {
+    display: inline-block;
+    margin-left: 0.35rem;
+    color: transparent;
+    background: color-mix(in oklab, var(--color-fog) 55%, transparent);
+    border-radius: 3px;
+    line-height: 1;
+    vertical-align: middle;
+  }
+
+  .vault-cta {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    flex: none;
+    padding: 0.6rem 1.15rem;
+    border-radius: 999px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--color-rose);
+    border: 1px solid color-mix(in oklab, var(--color-rose) 40%, transparent);
+    background: color-mix(in oklab, var(--color-rose) 8%, transparent);
+    transition: all 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .vault:hover .vault-cta {
+    color: #1a0710;
+    background: var(--color-rose);
+    border-color: var(--color-rose);
+    transform: translateX(3px);
+  }
+
+  .vault-scan {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: -30%;
+    width: 30%;
+    background: linear-gradient(
+      100deg,
+      transparent,
+      color-mix(in oklab, var(--color-rose) 12%, transparent),
+      transparent
+    );
+    transform: skewX(-18deg);
+    animation: vault-scan 6.5s ease-in-out infinite;
+    pointer-events: none;
+  }
+
+  @keyframes vault-scan {
+    0%,
+    100% {
+      left: -35%;
+    }
+    55% {
+      left: 105%;
+    }
+  }
+
+  /* ==================== 尾部 ==================== */
+  .closing {
+    text-align: center;
+    padding-bottom: 1rem;
+  }
+
+  .closing-kicker {
+    font-family: var(--font-mono);
+    font-size: 0.62rem;
+    letter-spacing: 0.34em;
+    color: var(--color-fog);
+    margin: 0 0 1rem;
+  }
+
+  .closing-title {
+    font-size: clamp(1.7rem, 4.6vw, 2.8rem);
+    margin-bottom: 1.8rem;
+  }
+
+  .closing-actions {
     display: flex;
     justify-content: center;
     flex-wrap: wrap;
     gap: 0.8rem;
   }
 
-  /* ============ 响应式 ============ */
-  @media (max-width: 980px) {
-    .hero-inner {
-      grid-template-columns: 1fr;
-      gap: 2.5rem;
-    }
-    .hero-visual {
-      /* 移动端标题优先，球体置于其下，避免首屏看不到站点主题 */
-      min-height: 280px;
-      order: 1;
-    }
-    .hero-copy {
-      order: 0;
-    }
-    .grid-3 {
+  /* ==================== 浅色主题 ==================== */
+  :global(:root[data-theme='light']) .hero {
+    --mega: #0b1020;
+  }
+
+  :global(:root[data-theme='light']) .hero-veil {
+    background: radial-gradient(
+      ellipse 78% 62% at 50% 44%,
+      transparent 25%,
+      color-mix(in oklab, #f4f5fa 78%, transparent) 92%
+    );
+  }
+
+  :global(:root[data-theme='light']) .floor {
+    opacity: 0.4;
+  }
+
+  :global(:root[data-theme='light']) .mega {
+    text-shadow:
+      0 0 22px color-mix(in oklab, var(--color-cyan) 20%, transparent),
+      0 0 70px color-mix(in oklab, var(--color-violet) 16%, transparent);
+  }
+
+  :global(:root[data-theme='light']) .tele-v,
+  :global(:root[data-theme='light']) .feed a:hover {
+    color: #10131d;
+  }
+
+  /* ==================== 响应式 ==================== */
+  @media (max-width: 1080px) {
+    .sector-grid {
       grid-template-columns: repeat(2, 1fr);
     }
   }
 
-  @media (max-width: 900px) {
-    /* 单列布局下把浮动卡片收回容器内，避免溢出 */
-    .fc-1 {
-      left: 0;
+  @media (max-width: 860px) {
+    .hero {
+      min-height: auto;
+      padding: 2.6rem 0 4.6rem;
     }
-    .fc-2 {
-      right: 0;
+    .hud-hide-sm {
+      display: none;
+    }
+    .hero-sub {
+      letter-spacing: 0.18em;
+      font-size: 0.9rem;
+    }
+    .section-note {
+      display: none;
+    }
+    .tele-grid {
+      grid-template-columns: repeat(2, 1fr);
+      gap: 1.2rem 1rem;
+    }
+    .tele:nth-child(3) {
+      padding-left: 0;
+      border-left: 0;
+    }
+    .vault-body {
+      flex-wrap: wrap;
+      gap: 1.1rem;
+      padding: 1.8rem 1.5rem;
+    }
+    .vault-cta {
+      width: 100%;
+      justify-content: center;
     }
   }
 
-  @media (max-width: 680px) {
-    .hero {
-      padding: 3.2rem 0 3rem;
+  @media (max-width: 560px) {
+    .mega {
+      font-size: clamp(2.7rem, 17vw, 4rem);
     }
-    .grid-3 {
+    .sector-grid {
       grid-template-columns: 1fr;
     }
-    .stats {
-      gap: 1.5rem;
+    .sector {
+      min-height: 0;
     }
-    .fc-1 {
-      left: -2%;
+    .corner {
+      width: 18px;
+      height: 18px;
     }
-    .fc-2 {
-      right: -2%;
+    .console {
+      padding: 1.25rem 1.1rem 1rem;
+    }
+    .console-head {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 0.5rem;
     }
     .section {
-      padding-top: 3.2rem;
+      padding-top: 3.6rem;
+    }
+    .hero-actions .btn {
+      width: 100%;
+      justify-content: center;
     }
   }
 </style>
 
 <script>
-  // 打字机效果
-  function initTypewriter() {
-    const el = document.getElementById('typewriter');
-    if (!el || el.dataset.done) return;
+  /* ---------------------------------------------------------
+     星际穿越粒子场
+     --------------------------------------------------------- */
+  function initWarp() {
+    const canvas = document.getElementById('warp') as HTMLCanvasElement | null;
+    if (!canvas) return;
+
+    const prev = (window as any).__warpRaf;
+    if (prev) cancelAnimationFrame(prev);
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const light = () => document.documentElement.getAttribute('data-theme') === 'light';
+
+    let w = 0;
+    let h = 0;
+    let stars: { x: number; y: number; z: number; hue: number }[] = [];
+    let raf = 0;
+    let last = performance.now();
+    let speed = 1;
+
+    const pointer = { x: 0.5, y: 0.5, tx: 0.5, ty: 0.5 };
+    const palettes = {
+      dark: ['#22d3ee', '#a78bfa', '#fb7185', '#e2e8ff'],
+      light: ['#0891b2', '#7c3aed', '#e11d48', '#334155'],
+    };
+
+    const newStar = (seed: boolean) => ({
+      x: (Math.random() - 0.5) * w * 2.2,
+      y: (Math.random() - 0.5) * h * 2.2,
+      z: seed ? Math.random() * w + 40 : w * 1.15,
+      hue: Math.floor(Math.random() * 4),
+    });
+
+    const resize = () => {
+      const rect = canvas.getBoundingClientRect();
+      w = Math.max(1, rect.width);
+      h = Math.max(1, rect.height);
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      canvas.width = Math.round(w * dpr);
+      canvas.height = Math.round(h * dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+      const count = Math.round(Math.min(300, Math.max(80, (w * h) / 3600)));
+      stars = Array.from({ length: count }, () => newStar(true));
+    };
+
+    const draw = (now: number) => {
+      // 页面切换后 canvas 已从 DOM 移除，自动停机
+      if (!canvas.isConnected) {
+        (window as any).__warpRaf = 0;
+        return;
+      }
+      const dt = Math.min(48, now - last) / 16.67;
+      last = now;
+
+      pointer.x += (pointer.tx - pointer.x) * 0.06;
+      pointer.y += (pointer.ty - pointer.y) * 0.06;
+
+      // 拖尾：用 destination-out 降低上一帧不透明度，保持背景透明
+      ctx.globalCompositeOperation = 'destination-out';
+      ctx.fillStyle = 'rgba(0,0,0,0.26)';
+      ctx.fillRect(0, 0, w, h);
+      ctx.globalCompositeOperation = 'lighter';
+
+      const cx = w / 2 + (pointer.x - 0.5) * w * 0.16;
+      const cy = h / 2 + (pointer.y - 0.5) * h * 0.16;
+      const colors = light() ? palettes.light : palettes.dark;
+      const focal = Math.max(320, w * 0.55);
+
+      for (const s of stars) {
+        const pz = s.z;
+        s.z -= speed * 2.4 * dt;
+
+        if (s.z < 8) {
+          s.x = (Math.random() - 0.5) * w * 2.2;
+          s.y = (Math.random() - 0.5) * h * 2.2;
+          s.z = w * 1.15;
+          continue;
+        }
+
+        const k = focal / s.z;
+        const pk = focal / pz;
+        const x1 = cx + s.x * pk;
+        const y1 = cy + s.y * pk;
+        const x2 = cx + s.x * k;
+        const y2 = cy + s.y * k;
+
+        // 超远焦的星点跳过绘制，省算力也避免噪点堆积
+        if (s.z > w * 1.2) continue;
+
+        const depth = 1 - s.z / (w * 1.2);
+        ctx.strokeStyle = colors[s.hue];
+        ctx.globalAlpha = Math.min(0.85, 0.1 + depth * 0.9);
+        ctx.lineWidth = 0.6 + depth * 1.7;
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+        ctx.stroke();
+      }
+
+      ctx.globalAlpha = 1;
+      ctx.globalCompositeOperation = 'source-over';
+      raf = requestAnimationFrame(draw);
+    };
+
+    const start = () => {
+      resize();
+      if (reduce) {
+        last = performance.now();
+        // 静态渲染一帧
+        ctx.globalCompositeOperation = 'lighter';
+        for (const s of stars) {
+          const k = Math.max(320, w * 0.55) / s.z;
+          const depth = 1 - s.z / (w * 1.2);
+          if (depth < 0) continue;
+          const colors = light() ? palettes.light : palettes.dark;
+          ctx.strokeStyle = colors[s.hue];
+          ctx.globalAlpha = 0.12 + depth * 0.55;
+          ctx.lineWidth = 0.6 + depth * 1.2;
+          ctx.beginPath();
+          ctx.moveTo(w / 2, h / 2);
+          ctx.lineTo(w / 2 + s.x * k, h / 2 + s.y * k);
+          ctx.stroke();
+        }
+        ctx.globalAlpha = 1;
+        ctx.globalCompositeOperation = 'source-over';
+        return;
+      }
+      last = performance.now();
+      raf = requestAnimationFrame(draw);
+    };
+
+    const onMove = (e: PointerEvent) => {
+      pointer.tx = e.clientX / window.innerWidth;
+      pointer.ty = e.clientY / window.innerHeight;
+    };
+
+    const onScroll = () => {
+      // 往下滚时加速穿越
+      const hei = Math.max(1, window.innerHeight);
+      speed = Math.min(3.4, 1 + window.scrollY / hei);
+    };
+
+    const onVisibility = () => {
+      if (document.hidden) {
+        cancelAnimationFrame(raf);
+      } else if (!reduce) {
+        last = performance.now();
+        raf = requestAnimationFrame(draw);
+      }
+    };
+
+    const onResize = () => resize();
+
+    // 每次进入首页都重新绑定，先解绑上一份，避免监听器累积
+    const prevAc = (window as any).__warpAc as AbortController | undefined;
+    if (prevAc) prevAc.abort();
+    const ac = new AbortController();
+    (window as any).__warpAc = ac;
+    const opt = { passive: true, signal: ac.signal } as AddEventListenerOptions;
+
+    window.addEventListener('pointermove', onMove, opt);
+    window.addEventListener('scroll', onScroll, opt);
+    window.addEventListener('resize', onResize, opt);
+    document.addEventListener('visibilitychange', onVisibility, { signal: ac.signal });
+
+    resize();
+    start();
+
+    (window as any).__warpRaf = raf;
+  }
+
+  /* ---------------------------------------------------------
+     时钟
+     --------------------------------------------------------- */
+  function initClock() {
+    const heroEl = document.getElementById('heroClock');
+    const consoleEl = document.getElementById('consoleClock');
+    const dateEl = document.getElementById('consoleDate');
+    if (!heroEl && !consoleEl) return;
+
+    const time = () =>
+      new Date().toLocaleTimeString('zh-CN', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    const date = () =>
+      new Date().toLocaleDateString('zh-CN', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        weekday: 'short',
+      });
+
+    const tick = () => {
+      const t = time();
+      if (heroEl) heroEl.textContent = t;
+      if (consoleEl) consoleEl.textContent = t;
+      if (dateEl) dateEl.textContent = date();
+    };
+
+    tick();
+    const old = (window as any).__fangClock;
+    if (old) clearInterval(old);
+    (window as any).__fangClock = window.setInterval(tick, 1000);
+  }
+
+  /* ---------------------------------------------------------
+     打字机
+     --------------------------------------------------------- */
+  function initType() {
+    const el = document.getElementById('type');
+    if (!el || el.dataset.bound) return;
+    el.dataset.bound = '1';
 
     const phrases = [
-      '这里存放着我的照片、文章和一些碎碎念。',
-      '喜欢黄昏时的光，也喜欢深夜安静的键盘声。',
-      'Astro 7 驱动的极光夜色主题，伸手可触。',
-      '愿你在这里找到一点安静的角落。',
+      '这里什么都没有，除了一点夜色。',
+      'build passing · 咖啡因水平正常。',
+      '有一扇门在下面，你自己找。',
+      'Astro 7 驱动，纯手写动效。',
     ];
 
     let p = 0;
@@ -555,22 +1462,120 @@ const stats = [
       i += deleting ? -1 : 1;
       el.textContent = text.slice(0, i);
 
-      let delay = deleting ? 38 : 72;
+      let delay = deleting ? 32 : 68;
       if (!deleting && i === text.length) {
-        delay = 1900;
+        delay = 2000;
         deleting = true;
       } else if (deleting && i === 0) {
         deleting = false;
         p = (p + 1) % phrases.length;
-        delay = 420;
+        delay = 380;
       }
-      el.dataset.done = '1';
       window.setTimeout(tick, delay);
     };
 
     tick();
   }
 
-  document.addEventListener('astro:page-load', initTypewriter);
-  initTypewriter();
+  /* ---------------------------------------------------------
+     卡片 3D 倾斜 + 聚光
+     --------------------------------------------------------- */
+  function initTilt() {
+    if (!window.matchMedia('(hover: hover) and (pointer: fine)').matches) return;
+
+    document.querySelectorAll<HTMLElement>('.sector').forEach((card) => {
+      if (card.dataset.tilt) return;
+      card.dataset.tilt = '1';
+
+      card.addEventListener('pointermove', (e) => {
+        const r = card.getBoundingClientRect();
+        const px = (e.clientX - r.left) / r.width;
+        const py = (e.clientY - r.top) / r.height;
+        card.style.setProperty('--mx', `${px * 100}%`);
+        card.style.setProperty('--my', `${py * 100}%`);
+        card.style.setProperty('--rx', `${(0.5 - py) * 9}deg`);
+        card.style.setProperty('--ry', `${(px - 0.5) * 11}deg`);
+      });
+
+      card.addEventListener('pointerleave', () => {
+        card.style.setProperty('--rx', '0deg');
+        card.style.setProperty('--ry', '0deg');
+      });
+    });
+  }
+
+  /* ---------------------------------------------------------
+     数字滚动
+     --------------------------------------------------------- */
+  function initCounters() {
+    const nodes = document.querySelectorAll<HTMLElement>('.tele-v[data-count]');
+    if (!nodes.length) return;
+
+    const target = (el: HTMLElement) => {
+      const raw = el.dataset.count ?? '0';
+      return { value: Number(raw) || 0, pad: raw.length };
+    };
+
+    nodes.forEach((el) => {
+      if (el.dataset.counted) return;
+      el.dataset.counted = '1';
+      const { value, pad } = target(el);
+      const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      if (reduce || value === 0) {
+        el.textContent = String(value).padStart(pad, '0');
+        return;
+      }
+
+      const dur = 1100;
+      const t0 = performance.now();
+      const step = (now: number) => {
+        const p = Math.min(1, (now - t0) / dur);
+        const eased = 1 - Math.pow(1 - p, 3);
+        el.textContent = String(Math.round(value * eased)).padStart(pad, '0');
+        if (p < 1) requestAnimationFrame(step);
+      };
+      requestAnimationFrame(step);
+    });
+  }
+
+  /* ---------------------------------------------------------
+     首屏视差
+     --------------------------------------------------------- */
+  function initParallax() {
+    const hero = document.querySelector<HTMLElement>('.hero-inner');
+    if (!hero) return;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+    const old = (window as any).__fangHeroScroll;
+    if (old) window.removeEventListener('scroll', old);
+
+    let ticking = false;
+    const onScroll = () => {
+      if (ticking) return;
+      ticking = true;
+      requestAnimationFrame(() => {
+        const y = window.scrollY;
+        if (y < window.innerHeight * 1.2) {
+          hero.style.transform = `translateY(${y * 0.12}px)`;
+          hero.style.opacity = String(Math.max(0, 1 - y / (window.innerHeight * 0.9)));
+        }
+        ticking = false;
+      });
+    };
+
+    window.addEventListener('scroll', onScroll, { passive: true });
+    (window as any).__fangHeroScroll = onScroll;
+  }
+
+  function boot() {
+    initWarp();
+    initClock();
+    initType();
+    initTilt();
+    initCounters();
+    initParallax();
+  }
+
+  document.addEventListener('astro:page-load', boot);
+  boot();
 </script>

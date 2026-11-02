@@ -11,3 +11,4 @@ shots/
 *.log
 .vercel
 .netlify
+.workbuddy/

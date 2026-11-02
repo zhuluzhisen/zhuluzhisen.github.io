@@ -7,6 +7,7 @@ const nav = [
   { href: '/tags', label: '标签' },
   { href: '/friends', label: '友链' },
   { href: '/about', label: '关于我' },
+  { href: '/secret', label: '秘密档案', secret: true },
 ];
 
 const path = Astro.url.pathname.replace(/\/+$/, '') || '/';
@@ -27,7 +28,15 @@ const isActive = (href: string) =>
     <nav class="nav" aria-label="主导航">
       {
         nav.map((item) => (
-          <a href={item.href} class={isActive(item.href) ? 'nav-link active' : 'nav-link'}>
+          <a
+            href={item.href}
+            class:list={[
+              'nav-link',
+              isActive(item.href) && 'active',
+              item.secret && 'nav-secret',
+            ]}
+          >
+            {item.secret && <i class="ri-lock-2-line" aria-hidden="true" />}
             {item.label}
           </a>
         ))
@@ -36,7 +45,7 @@ const isActive = (href: string) =>
         href="http://shenyu-vip.lofter.com"
         target="_blank"
         rel="noopener noreferrer"
-        class="nav-link"
+        class="nav-link nav-ext"
       >
         摄影
         <i class="ri-arrow-right-up-line" aria-hidden="true"></i>
@@ -57,7 +66,15 @@ const isActive = (href: string) =>
   <div id="mobileNav" class="mobile-nav" hidden>
     {
       nav.map((item) => (
-        <a href={item.href} class={isActive(item.href) ? 'mobile-link active' : 'mobile-link'}>
+        <a
+          href={item.href}
+          class:list={[
+            'mobile-link',
+            isActive(item.href) && 'active',
+            item.secret && 'mobile-secret',
+          ]}
+        >
+          {item.secret && <i class="ri-lock-2-line" aria-hidden="true" />}
           {item.label}
         </a>
       ))
@@ -69,6 +86,7 @@ const isActive = (href: string) =>
       class="mobile-link"
     >
       摄影外链
+      <i class="ri-arrow-right-up-line" aria-hidden="true"></i>
     </a>
   </div>
 </header>
@@ -183,6 +201,37 @@ const isActive = (href: string) =>
     opacity: 0.65;
   }
 
+  /* 秘密档案：锁形图标 + 玫瑰色描边，稍微从导航里跳出来 */
+  .nav-secret {
+    margin-left: 0.25rem;
+    color: var(--color-rose);
+    border: 1px solid color-mix(in oklab, var(--color-rose) 26%, transparent);
+    background: color-mix(in oklab, var(--color-rose) 7%, transparent);
+    font-size: 0.82rem;
+  }
+
+  .nav-secret i {
+    font-size: 0.85em;
+    opacity: 0.9;
+    margin-right: 0.1rem;
+  }
+
+  .nav-secret:hover {
+    color: #fff;
+    border-color: color-mix(in oklab, var(--color-rose) 60%, transparent);
+    background: color-mix(in oklab, var(--color-rose) 18%, transparent);
+  }
+
+  .nav-secret.active {
+    color: #fff;
+    border-color: color-mix(in oklab, var(--color-rose) 70%, transparent);
+    background: color-mix(in oklab, var(--color-rose) 20%, transparent);
+  }
+
+  .nav-secret.active::after {
+    background: linear-gradient(90deg, var(--color-rose), var(--color-violet));
+  }
+
   /* ---------- 右侧按钮 ---------- */
   .actions {
     display: flex;
@@ -241,6 +290,9 @@ const isActive = (href: string) =>
   }
 
   .mobile-link {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
     padding: 0.7rem 0.2rem;
     color: var(--color-mist);
     font-size: 0.92rem;
@@ -249,6 +301,37 @@ const isActive = (href: string) =>
 
   .mobile-link.active {
     color: var(--color-cyan);
+  }
+
+  .mobile-secret {
+    color: var(--color-rose);
+  }
+
+  .mobile-secret.active {
+    color: var(--color-rose);
+  }
+
+  .mobile-secret i,
+  .mobile-link i {
+    font-size: 0.85em;
+    opacity: 0.75;
+  }
+
+  /* 导航项变多后，中等宽度先收掉外链，避免挤成两行 */
+  @media (max-width: 1120px) {
+    .nav {
+      gap: 0.15rem;
+    }
+    .nav-ext {
+      display: none;
+    }
+    .nav-link {
+      padding: 0.45rem 0.7rem;
+      font-size: 0.84rem;
+    }
+    .nav-secret {
+      font-size: 0.79rem;
+    }
   }
 
   @media (max-width: 900px) {

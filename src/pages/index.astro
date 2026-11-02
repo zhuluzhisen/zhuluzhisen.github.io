@@ -1,7 +1,7 @@
 ---
 /**
  * 首页 —— 炫酷视觉版
- * canvas 星际穿越 / 透视网格地面 / HUD 控制台 / 3D 倾斜卡片
+ * canvas 交互粒子场 / 透视网格地面 / HUD 控制台 / 3D 倾斜卡片
  * 私人内容已迁至 /secret
  */
 import { getCollection } from 'astro:content';
@@ -71,7 +71,7 @@ const keywords = ['PHOTOGRAPHY', 'ASTRO 7', '夜色', '光影', '笔记', '绝�
 >
   <!-- ==================== HERO ==================== -->
   <section class="hero" id="hero">
-    <canvas id="warp" class="warp" aria-hidden="true"></canvas>
+    <canvas id="field" class="field" aria-hidden="true"></canvas>
     <div class="floor" aria-hidden="true"></div>
     <div class="hero-veil" aria-hidden="true"></div>
 
@@ -251,7 +251,7 @@ const keywords = ['PHOTOGRAPHY', 'ASTRO 7', '夜色', '光影', '笔记', '绝�
     overflow: clip;
   }
 
-  .warp {
+  .field {
     position: absolute;
     inset: 0;
     width: 100%;
@@ -1042,38 +1042,57 @@ const keywords = ['PHOTOGRAPHY', 'ASTRO 7', '夜色', '光影', '笔记', '绝�
   /* ---------------------------------------------------------
      星际穿越粒子场
      --------------------------------------------------------- */
-  function initWarp() {
-    const canvas = document.getElementById('warp') as HTMLCanvasElement | null;
+  function initField() {
+    const canvas = document.getElementById('field') as HTMLCanvasElement | null;
     if (!canvas) return;
 
-    const prev = (window as any).__warpRaf;
-    if (prev) cancelAnimationFrame(prev);
+    const prevRaf = (window as any).__fieldRaf;
+    if (prevRaf) cancelAnimationFrame(prevRaf);
 
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
     const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const light = () => document.documentElement.getAttribute('data-theme') === 'light';
+    const isLight = () => document.documentElement.getAttribute('data-theme') === 'light';
+
+    interface Dot {
+      x: number;
+      y: number;
+      vx: number;
+      vy: number;
+      r: number;
+      a: number;
+      z: number;
+    }
+    interface P {
+      x: number;
+      y: number;
+      vx: number;
+      vy: number;
+      r: number;
+      c: number;
+      ph: number;
+    }
 
     let w = 0;
     let h = 0;
-    let stars: { x: number; y: number; z: number; hue: number }[] = [];
     let raf = 0;
     let last = performance.now();
-    let speed = 1;
+    let dust: Dot[] = [];
+    let ps: P[] = [];
+    let linkDist = 132;
+    let mouseDist = 190;
 
-    const pointer = { x: 0.5, y: 0.5, tx: 0.5, ty: 0.5 };
-    const palettes = {
-      dark: ['#22d3ee', '#a78bfa', '#fb7185', '#e2e8ff'],
-      light: ['#0891b2', '#7c3aed', '#e11d48', '#334155'],
-    };
+    const pointer = { x: -999, y: -999, tx: -999, ty: -999, inside: false };
+    const rings: { x: number; y: number; t: number }[] = [];
 
-    const newStar = (seed: boolean) => ({
-      x: (Math.random() - 0.5) * w * 2.2,
-      y: (Math.random() - 0.5) * h * 2.2,
-      z: seed ? Math.random() * w + 40 : w * 1.15,
-      hue: Math.floor(Math.random() * 4),
-    });
+    // 深色主题：霓虹；浅色主题：深色墨点
+    const dotsDark = ['#22d3ee', '#a78bfa', '#fb7185', '#e8eeff'];
+    const dotsLight = ['#0891b2', '#7c3aed', '#e11d48', '#1e293b'];
+    const lineDark = '34,211,238';
+    const lineLight = '30,41,59';
+
+    const rand = (a: number, b: number) => a + Math.random() * (b - a);
 
     const resize = () => {
       const rect = canvas.getBoundingClientRect();
@@ -1084,105 +1103,243 @@ const keywords = ['PHOTOGRAPHY', 'ASTRO 7', '夜色', '光影', '笔记', '绝�
       canvas.height = Math.round(h * dpr);
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-      const count = Math.round(Math.min(300, Math.max(80, (w * h) / 3600)));
-      stars = Array.from({ length: count }, () => newStar(true));
+      linkDist = w < 700 ? 104 : 150;
+      mouseDist = w < 700 ? 150 : 200;
+
+      // 背景浮尘
+      const dustCount = Math.round(Math.min(90, Math.max(30, (w * h) / 22000)));
+      dust = Array.from({ length: dustCount }, () => ({
+        x: Math.random() * w,
+        y: Math.random() * h,
+        vx: rand(-0.08, 0.08),
+        vy: rand(-0.06, 0.06),
+        r: rand(0.5, 1.6),
+        a: rand(0.12, 0.38),
+        z: rand(0.3, 1),
+      }));
+
+      // 交互粒子
+      const pCount = Math.round(Math.min(130, Math.max(40, (w * h) / 8500)));
+      ps = Array.from({ length: pCount }, () => ({
+        x: Math.random() * w,
+        y: Math.random() * h,
+        vx: rand(-0.28, 0.28),
+        vy: rand(-0.28, 0.28),
+        r: rand(1, 2.2),
+        c: Math.floor(Math.random() * 4),
+        ph: Math.random() * Math.PI * 2,
+      }));
     };
 
-    const draw = (now: number) => {
-      // 页面切换后 canvas 已从 DOM 移除，自动停机
-      if (!canvas.isConnected) {
-        (window as any).__warpRaf = 0;
-        return;
-      }
+    const drawFrame = (now: number, animate: boolean) => {
       const dt = Math.min(48, now - last) / 16.67;
       last = now;
 
-      pointer.x += (pointer.tx - pointer.x) * 0.06;
-      pointer.y += (pointer.ty - pointer.y) * 0.06;
+      // 鼠标位置平滑
+      if (pointer.tx > -900) {
+        if (pointer.x < -900) {
+          pointer.x = pointer.tx;
+          pointer.y = pointer.ty;
+        }
+        pointer.x += (pointer.tx - pointer.x) * 0.16;
+        pointer.y += (pointer.ty - pointer.y) * 0.16;
+      }
 
-      // 拖尾：用 destination-out 降低上一帧不透明度，保持背景透明
-      ctx.globalCompositeOperation = 'destination-out';
-      ctx.fillStyle = 'rgba(0,0,0,0.26)';
-      ctx.fillRect(0, 0, w, h);
-      ctx.globalCompositeOperation = 'lighter';
+      ctx.clearRect(0, 0, w, h);
 
-      const cx = w / 2 + (pointer.x - 0.5) * w * 0.16;
-      const cy = h / 2 + (pointer.y - 0.5) * h * 0.16;
-      const colors = light() ? palettes.light : palettes.dark;
-      const focal = Math.max(320, w * 0.55);
+      const light = isLight();
+      const lineRGB = light ? lineLight : lineDark;
+      const dotColors = light ? dotsLight : dotsDark;
+      const px = pointer.inside ? pointer.x : -9999;
+      const py = pointer.inside ? pointer.y : -9999;
 
-      for (const s of stars) {
-        const pz = s.z;
-        s.z -= speed * 2.4 * dt;
+      // ---------- 背景浮尘 ----------
+      for (const d of dust) {
+        if (animate) {
+          d.x += d.vx * dt;
+          d.y += d.vy * dt;
+          if (d.x < -10) d.x = w + 10;
+          if (d.x > w + 10) d.x = -10;
+          if (d.y < -10) d.y = h + 10;
+          if (d.y > h + 10) d.y = -10;
+        }
+        // 鼠标轻微视差
+        const ox = pointer.inside ? (px - w / 2) * -0.012 * d.z : 0;
+        const oy = pointer.inside ? (py - h / 2) * -0.012 * d.z : 0;
+        ctx.beginPath();
+        ctx.fillStyle = `rgba(${lineRGB},${d.a * 0.5})`;
+        ctx.arc(d.x + ox, d.y + oy, d.r, 0, Math.PI * 2);
+        ctx.fill();
+      }
 
-        if (s.z < 8) {
-          s.x = (Math.random() - 0.5) * w * 2.2;
-          s.y = (Math.random() - 0.5) * h * 2.2;
-          s.z = w * 1.15;
+      // ---------- 粒子 ----------
+      for (const p of ps) {
+        if (animate) {
+          p.ph += 0.012 * dt;
+
+          // 自由漂移 + 轻微湍流
+          p.x += (p.vx + Math.sin(p.ph) * 0.1) * dt;
+          p.y += (p.vy + Math.cos(p.ph * 0.8) * 0.1) * dt;
+
+          // 鼠标吸引（近处拉，远处推，保持不塌缩）
+          if (pointer.inside) {
+            const dx = px - p.x;
+            const dy = py - p.y;
+            const d2 = dx * dx + dy * dy;
+            const far = mouseDist * 1.9;
+            if (d2 < far * far && d2 > 1) {
+              const d = Math.sqrt(d2);
+              const pull = (1 - d / far) * 0.16;
+              p.vx += (dx / d) * pull * dt;
+              p.vy += (dy / d) * pull * dt;
+            }
+          }
+
+          // 阻尼 + 限速，避免越飘越快
+          p.vx *= 0.985;
+          p.vy *= 0.985;
+          const sp = Math.hypot(p.vx, p.vy);
+          if (sp > 1.6) {
+            p.vx = (p.vx / sp) * 1.6;
+            p.vy = (p.vy / sp) * 1.6;
+          }
+
+          if (p.x < -20) p.x = w + 20;
+          if (p.x > w + 20) p.x = -20;
+          if (p.y < -20) p.y = h + 20;
+          if (p.y > h + 20) p.y = -20;
+        }
+      }
+
+      // ---------- 连线：粒子之间 ----------
+      ctx.lineWidth = 0.7;
+      for (let i = 0; i < ps.length; i++) {
+        const a = ps[i];
+        for (let j = i + 1; j < ps.length; j++) {
+          const b = ps[j];
+          const dx = a.x - b.x;
+          const dy = a.y - b.y;
+          const d2 = dx * dx + dy * dy;
+          if (d2 > linkDist * linkDist) continue;
+          const d = Math.sqrt(d2);
+          const alpha = (1 - d / linkDist) * (light ? 0.34 : 0.5);
+          ctx.strokeStyle = `rgba(${lineRGB},${alpha})`;
+          ctx.beginPath();
+          ctx.moveTo(a.x, a.y);
+          ctx.lineTo(b.x, b.y);
+          ctx.stroke();
+        }
+      }
+
+      // ---------- 连线：连到鼠标 ----------
+      if (px > -900) {
+        for (const p of ps) {
+          const dx = p.x - px;
+          const dy = p.y - py;
+          const d = Math.hypot(dx, dy);
+          if (d > mouseDist) continue;
+          const alpha = (1 - d / mouseDist) * 0.75;
+          ctx.strokeStyle = `rgba(${light ? '225,29,72' : '251,113,133'},${alpha})`;
+          ctx.lineWidth = 0.9;
+          ctx.beginPath();
+          ctx.moveTo(px, py);
+          ctx.lineTo(p.x, p.y);
+          ctx.stroke();
+        }
+        // 光标处一点光
+        const g = ctx.createRadialGradient(px, py, 0, px, py, 70);
+        g.addColorStop(0, `rgba(${light ? '225,29,72' : '251,113,133'},0.35)`);
+        g.addColorStop(1, `rgba(${light ? '225,29,72' : '251,113,133'},0)`);
+        ctx.fillStyle = g;
+        ctx.beginPath();
+        ctx.arc(px, py, 70, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // ---------- 粒子点 ----------
+      for (const p of ps) {
+        const color = dotColors[p.c];
+        const near =
+          px > -900 && Math.hypot(p.x - px, p.y - py) < mouseDist ? 1 : 0;
+        // 外圈柔光
+        if (near) {
+          const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.r * 6);
+          g.addColorStop(0, color);
+          g.addColorStop(1, 'rgba(0,0,0,0)');
+          ctx.globalAlpha = 0.28;
+          ctx.fillStyle = g;
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.r * 6, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.globalAlpha = 1;
+        }
+        ctx.beginPath();
+        ctx.fillStyle = color;
+        ctx.globalAlpha = light ? 0.8 : 0.92;
+        ctx.arc(p.x, p.y, p.r + near * 0.6, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 1;
+      }
+
+      // ---------- 点击冲击波 ----------
+      for (let i = rings.length - 1; i >= 0; i--) {
+        const r = rings[i];
+        r.t += animate ? 0.028 * dt : 1;
+        if (r.t >= 1) {
+          rings.splice(i, 1);
           continue;
         }
-
-        const k = focal / s.z;
-        const pk = focal / pz;
-        const x1 = cx + s.x * pk;
-        const y1 = cy + s.y * pk;
-        const x2 = cx + s.x * k;
-        const y2 = cy + s.y * k;
-
-        // 超远焦的星点跳过绘制，省算力也避免噪点堆积
-        if (s.z > w * 1.2) continue;
-
-        const depth = 1 - s.z / (w * 1.2);
-        ctx.strokeStyle = colors[s.hue];
-        ctx.globalAlpha = Math.min(0.85, 0.1 + depth * 0.9);
-        ctx.lineWidth = 0.6 + depth * 1.7;
+        const radius = 8 + r.t * 260;
+        ctx.strokeStyle = `rgba(${light ? '225,29,72' : '251,113,133'},${(1 - r.t) * 0.55})`;
+        ctx.lineWidth = 1.6 * (1 - r.t) + 0.2;
         ctx.beginPath();
-        ctx.moveTo(x1, y1);
-        ctx.lineTo(x2, y2);
+        ctx.arc(r.x, r.y, radius, 0, Math.PI * 2);
         ctx.stroke();
       }
 
-      ctx.globalAlpha = 1;
-      ctx.globalCompositeOperation = 'source-over';
-      raf = requestAnimationFrame(draw);
+      if (animate && canvas.isConnected) {
+        raf = requestAnimationFrame(loop);
+      } else if (!canvas.isConnected) {
+        (window as any).__fieldRaf = 0;
+      }
     };
 
-    const start = () => {
-      resize();
-      if (reduce) {
-        last = performance.now();
-        // 静态渲染一帧
-        ctx.globalCompositeOperation = 'lighter';
-        for (const s of stars) {
-          const k = Math.max(320, w * 0.55) / s.z;
-          const depth = 1 - s.z / (w * 1.2);
-          if (depth < 0) continue;
-          const colors = light() ? palettes.light : palettes.dark;
-          ctx.strokeStyle = colors[s.hue];
-          ctx.globalAlpha = 0.12 + depth * 0.55;
-          ctx.lineWidth = 0.6 + depth * 1.2;
-          ctx.beginPath();
-          ctx.moveTo(w / 2, h / 2);
-          ctx.lineTo(w / 2 + s.x * k, h / 2 + s.y * k);
-          ctx.stroke();
-        }
-        ctx.globalAlpha = 1;
-        ctx.globalCompositeOperation = 'source-over';
-        return;
-      }
-      last = performance.now();
-      raf = requestAnimationFrame(draw);
-    };
+    const loop = (now: number) => drawFrame(now, true);
 
     const onMove = (e: PointerEvent) => {
-      pointer.tx = e.clientX / window.innerWidth;
-      pointer.ty = e.clientY / window.innerHeight;
+      const rect = canvas.getBoundingClientRect();
+      pointer.tx = e.clientX - rect.left;
+      pointer.ty = e.clientY - rect.top;
+      pointer.inside =
+        pointer.tx >= 0 && pointer.tx <= w && pointer.ty >= 0 && pointer.ty <= h;
     };
 
-    const onScroll = () => {
-      // 往下滚时加速穿越
-      const hei = Math.max(1, window.innerHeight);
-      speed = Math.min(3.4, 1 + window.scrollY / hei);
+    const onLeave = () => {
+      pointer.inside = false;
+    };
+
+    const onDown = (e: PointerEvent) => {
+      const rect = canvas.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      if (x < 0 || x > w || y < 0 || y > h) return;
+      rings.push({ x, y, t: 0 });
+      // 冲击：把附近粒子推开
+      for (const p of ps) {
+        const dx = p.x - x;
+        const dy = p.y - y;
+        const d = Math.hypot(dx, dy);
+        if (d > 280 || d < 1) continue;
+        const f = (1 - d / 280) * 6.5;
+        p.vx += (dx / d) * f;
+        p.vy += (dy / d) * f;
+      }
+      if (reduce) drawFrame(performance.now(), false);
+    };
+
+    const onResize = () => {
+      resize();
+      if (reduce) drawFrame(performance.now(), false);
     };
 
     const onVisibility = () => {
@@ -1190,28 +1347,56 @@ const keywords = ['PHOTOGRAPHY', 'ASTRO 7', '夜色', '光影', '笔记', '绝�
         cancelAnimationFrame(raf);
       } else if (!reduce) {
         last = performance.now();
-        raf = requestAnimationFrame(draw);
+        raf = requestAnimationFrame(loop);
       }
     };
 
-    const onResize = () => resize();
+    // 首屏之外暂停，省电省 CPU
+    const oldIO = (window as any).__fieldIO as IntersectionObserver | undefined;
+    if (oldIO) oldIO.disconnect();
 
-    // 每次进入首页都重新绑定，先解绑上一份，避免监听器累积
-    const prevAc = (window as any).__warpAc as AbortController | undefined;
+    const io = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (reduce) return;
+          if (entry.isIntersecting) {
+            if (!raf) {
+              last = performance.now();
+              raf = requestAnimationFrame(loop);
+            }
+          } else {
+            cancelAnimationFrame(raf);
+            raf = 0;
+          }
+        });
+      },
+      { threshold: 0.05 },
+    );
+
+    const prevAc = (window as any).__fieldAc as AbortController | undefined;
     if (prevAc) prevAc.abort();
     const ac = new AbortController();
-    (window as any).__warpAc = ac;
+    (window as any).__fieldAc = ac;
     const opt = { passive: true, signal: ac.signal } as AddEventListenerOptions;
 
     window.addEventListener('pointermove', onMove, opt);
-    window.addEventListener('scroll', onScroll, opt);
+    window.addEventListener('pointerdown', onDown, opt);
+    window.addEventListener('pointerleave', onLeave, opt);
     window.addEventListener('resize', onResize, opt);
     document.addEventListener('visibilitychange', onVisibility, { signal: ac.signal });
 
     resize();
-    start();
+    io.observe(canvas);
+    (window as any).__fieldIO = io;
 
-    (window as any).__warpRaf = raf;
+    last = performance.now();
+    if (reduce) {
+      drawFrame(performance.now(), false);
+    } else {
+      raf = requestAnimationFrame(loop);
+    }
+
+    (window as any).__fieldRaf = raf;
   }
 
   /* ---------------------------------------------------------
@@ -1376,7 +1561,7 @@ const keywords = ['PHOTOGRAPHY', 'ASTRO 7', '夜色', '光影', '笔记', '绝�
   }
 
   function boot() {
-    initWarp();
+    initField();
     initClock();
     initType();
     initTilt();

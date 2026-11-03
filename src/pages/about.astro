@@ -82,11 +82,6 @@ const timeline = [
       <h2 class="card-title">找到我</h2>
       <p class="contact-desc">欢迎交流，摄影约拍、技术闲聊都欢迎。</p>
       <div class="contact-list">
-        <a href="http://shenyu-vip.lofter.com" target="_blank" rel="noopener noreferrer" class="contact-item">
-          <i class="ri-image-line" aria-hidden="true"></i>
-          <span>摄影 · LOFTER</span>
-          <i class="ri-arrow-right-up-line" aria-hidden="true"></i>
-        </a>
         <a href="/friends" class="contact-item">
           <i class="ri-group-line" aria-hidden="true"></i>
           <span>友链</span>
@@ -245,7 +240,7 @@ const timeline = [
 
   .contact-list {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
     gap: 0.8rem;
   }
 

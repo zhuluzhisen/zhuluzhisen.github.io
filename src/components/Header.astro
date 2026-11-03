@@ -33,15 +33,6 @@ const isActive = (href: string) =>
           </a>
         ))
       }
-      <a
-        href="http://shenyu-vip.lofter.com"
-        target="_blank"
-        rel="noopener noreferrer"
-        class="nav-link nav-ext"
-      >
-        摄影
-        <i class="ri-arrow-right-up-line" aria-hidden="true"></i>
-      </a>
     </nav>
 
     <div class="actions">
@@ -63,15 +54,6 @@ const isActive = (href: string) =>
         </a>
       ))
     }
-    <a
-      href="http://shenyu-vip.lofter.com"
-      target="_blank"
-      rel="noopener noreferrer"
-      class="mobile-link"
-    >
-      摄影外链
-      <i class="ri-arrow-right-up-line" aria-hidden="true"></i>
-    </a>
   </div>
 </header>
 
@@ -261,13 +243,9 @@ const isActive = (href: string) =>
     opacity: 0.75;
   }
 
-  /* 导航项变多后，中等宽度先收掉外链，避免挤成两行 */
   @media (max-width: 1120px) {
     .nav {
       gap: 0.15rem;
-    }
-    .nav-ext {
-      display: none;
     }
     .nav-link {
       padding: 0.45rem 0.7rem;

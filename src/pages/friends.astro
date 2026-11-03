@@ -2,17 +2,10 @@
 import { Image } from 'astro:assets';
 import BaseLayout from '../layouts/BaseLayout.astro';
 
-import Cover1 from '../assets/images/cover1.jpg';
 import Cover3 from '../assets/images/cover3.jpg';
 import Cover5 from '../assets/images/cover5.jpg';
 
 const friends = [
-  {
-    name: '浅玉',
-    url: 'http://shenyu-vip.lofter.com',
-    desc: '摄影 · 光影与日常',
-    avatar: Cover1,
-  },
   {
     name: 'Hexo 主题',
     url: 'https://github.com',
@@ -99,7 +92,7 @@ const note = `想交换友链？我的博客主要内容是摄影随笔与生活
 
   .friend-grid {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
     gap: 1.2rem;
     margin-bottom: 2rem;
   }

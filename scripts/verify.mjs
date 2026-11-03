@@ -181,14 +181,15 @@ if (!fs.existsSync(dist)) {
   if (missingOut.length) bad(`产物缺失: ${missingOut.join(', ')}`);
   else ok(`核心产物齐全（${html.length} 个 HTML）`);
 
-  // 每篇文章的产物
-  const postOut = posts.filter((p) => {
+  // 每篇文章的产物（draft: true 的文章按设计不产出页面，跳过）
+  const published = posts.filter((p) => !/^---[\s\S]*?\bdraft:\s*true/m.test(fs.readFileSync(p, 'utf8').split('---').slice(0, 2).join('---')));
+  const postOut = published.filter((p) => {
     const id = path.basename(p).replace(/\.mdx?$/, '');
     return fs.existsSync(path.join(dist, 'blog', id, 'index.html'));
   });
-  if (postOut.length !== posts.length)
-    bad(`文章产物不全: ${posts.length - postOut.length} 篇缺失`);
-  else ok(`${posts.length} 篇文章均有独立页面`);
+  if (postOut.length !== published.length)
+    bad(`文章产物不全: ${published.length - postOut.length} 篇缺失`);
+  else ok(`${published.length} 篇已发布文章均有独立页面（另有 ${posts.length - published.length} 篇草稿）`);
 
   // 内部链接解析：路由集合 = HTML 页面 + 静态文件
   const routes = new Set();

@@ -15,3 +15,7 @@ shots/
 *.bak
 dist-cloud/
 dist-cloud/
+
+# 剧本原始稿件（docx / txt）只留在本地，不进仓库
+docs/剧本/*.docx
+docs/剧本/*.txt

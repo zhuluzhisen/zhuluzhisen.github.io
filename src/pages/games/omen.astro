@@ -1,0 +1,2324 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import PlayerBar from '../../components/PlayerBar.astro';
+import '../../styles/games.css';
+---
+
+<BaseLayout title="签 · OMEN" description="签 · OMEN —— 抽签问卦的卡牌 Roguelike，十五层分支，卡组构筑，浏览器直接开玩">
+  <div class="gx-page container-x" id="omenRoot">
+    <a class="gx-back" href="/games">
+      <i class="ri-arrow-left-line" aria-hidden="true"></i>
+      游戏厅
+    </a>
+
+    <header class="gx-head om-head">
+      <div class="gx-head-row">
+        <div>
+          <p class="gx-kicker">OMEN · 卡牌 ROGUELIKE</p>
+          <h1 class="gx-title">签</h1>
+        </div>
+        <PlayerBar />
+      </div>
+      <p class="gx-sub">
+        抽签问卦的卡牌 Roguelike。每局叫「一程」，十五层，每层 2–4 条路，选了不能退。
+        卦力有限，签会越抽越少——怎么把手上这几张打完，才是这一程的全部。
+      </p>
+    </header>
+
+    <div class="gx-stage">
+      <div class="gx-board-col">
+        <div class="gx-screen om-screen">
+          <!-- 标题 / 结算遮罩 -->
+          <div class="gx-overlay" id="omOverlay">
+            <div class="gx-overlay-card">
+              <p class="gx-overlay-kicker" id="omKicker">CHAPTER · 抽签</p>
+              <h2 class="gx-overlay-title" id="omTitle">签</h2>
+              <p class="gx-overlay-desc" id="omDesc">
+                牌组 10 张，卦力 3 点。<br />
+                点敌人选目标，<b>点签打出</b>，<b>空格</b> 结束回合。
+              </p>
+              <button class="gx-btn" id="omBtn" type="button">起一卦</button>
+              <button class="gx-btn gx-btn--ghost" id="omBtn2" type="button" hidden>每日种子</button>
+            </div>
+          </div>
+
+          <!-- 地图 -->
+          <section class="om-view" id="omMapView" hidden>
+            <div class="om-map-head">
+              <span class="om-map-kicker" id="omMapKicker">第 1 层 / 15</span>
+              <span class="om-map-hint">选一条路走下去</span>
+            </div>
+            <div class="om-map-scroll">
+              <svg id="omMapSvg" viewBox="0 0 400 604" role="img" aria-label="十五层分支地图"></svg>
+            </div>
+          </section>
+
+          <!-- 战斗 -->
+          <section class="om-view om-battle" id="omBattleView" hidden>
+            <div class="om-foes" id="omFoes"></div>
+            <div class="om-mid">
+              <div class="om-me" id="omMe"></div>
+              <div class="om-log" id="omLog"></div>
+            </div>
+            <div class="om-hand" id="omHand"></div>
+            <div class="om-bar">
+              <div class="om-energy" id="omEnergy"></div>
+              <div class="om-piles" id="omPiles"></div>
+              <button class="om-end" id="omEnd" type="button">结束回合</button>
+            </div>
+          </section>
+
+          <!-- 事件 / 卜肆 / 焚签 / 奖励 / 牌组 -->
+          <section class="om-view om-scene" id="omSceneView" hidden></section>
+        </div>
+      </div>
+
+      <aside class="gx-side">
+        <div class="gx-panel">
+          <p class="gx-panel-label">LIFE · 生命</p>
+          <p class="gx-score" id="omHp">72</p>
+          <p class="gx-score-sub">上限 <span id="omHpMax">72</span> · 第 <span id="omFloor">1</span> 层</p>
+        </div>
+
+        <div class="gx-panel">
+          <p class="gx-panel-label">LOT GOLD · 签金</p>
+          <p class="gx-score gx-score--sm" id="omGold">99</p>
+          <p class="gx-score-sub">牌组 <span id="omDeckN">10</span> 张 · 卜器 <span id="omRelicN">0</span> 件</p>
+        </div>
+
+        <div class="gx-panel">
+          <p class="gx-panel-label">RELICS · 卜器</p>
+          <div class="om-relics" id="omRelics"><span class="om-relic-empty">还没有</span></div>
+        </div>
+
+        <div class="gx-panel">
+          <p class="gx-panel-label">CONTROLS · 操作</p>
+          <div class="gx-keys">
+            <span class="gx-key">1–9 打签</span>
+            <span class="gx-key">空格 结束</span>
+            <span class="gx-key">D 看牌组</span>
+          </div>
+          <button class="om-mini-btn" id="omDeckBtn" type="button">查看牌组</button>
+        </div>
+
+        <div class="gx-panel">
+          <p class="gx-panel-label">TIP · 提示</p>
+          <p class="gx-note" id="omTip">
+            格挡每回合清零，所以<strong>先看清敌人意图</strong>——它这回合不打你，你就别浪费格挡。
+          </p>
+        </div>
+      </aside>
+    </div>
+  </div>
+</BaseLayout>
+
+<style is:global>
+  /* 卡牌 / 敌人 / 场景都由 JS 动态插入 innerHTML，
+     Astro 的 scoped style 加不到这些节点上，这里必须用全局样式。
+     全部类名带 om- 前缀，不会外泄。 */
+  .om-screen {
+    position: relative;
+    max-width: 900px;
+    min-height: 620px;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .om-view {
+    display: flex;
+    flex-direction: column;
+    min-height: 620px;
+    flex: 1;
+  }
+
+  .om-view[hidden] {
+    display: none;
+  }
+
+  /* ---------- 地图 ---------- */
+  .om-map-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.6rem;
+    padding: 0.85rem 1.1rem 0.55rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  }
+
+  .om-map-kicker {
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    letter-spacing: 0.22em;
+    color: var(--color-cyan);
+  }
+
+  .om-map-hint {
+    font-size: 0.72rem;
+    color: var(--color-fog);
+  }
+
+  .om-map-scroll {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0.4rem 0.6rem 0.8rem;
+  }
+
+  .om-map-scroll svg {
+    display: block;
+    width: 100%;
+    height: auto;
+  }
+
+  .om-node circle {
+    cursor: default;
+  }
+
+  .om-node--live circle {
+    cursor: pointer;
+  }
+
+  /* ---------- 战斗 ---------- */
+  .om-battle {
+    padding: 0.9rem 1rem 0.8rem;
+    gap: 0.55rem;
+  }
+
+  .om-foes {
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    gap: 1.4rem;
+    min-height: 158px;
+    padding-top: 0.3rem;
+  }
+
+  .om-foe {
+    width: 132px;
+    text-align: center;
+    cursor: pointer;
+    border: 0;
+    background: none;
+    padding: 0;
+    color: inherit;
+    font-family: inherit;
+  }
+
+  .om-foe-intent {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    margin-bottom: 0.3rem;
+    padding: 0.16rem 0.5rem;
+    border-radius: 999px;
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .om-foe-glyph {
+    font-size: 2.5rem;
+    line-height: 1.1;
+    display: block;
+  }
+
+  .om-foe-name {
+    display: block;
+    font-size: 0.72rem;
+    color: var(--color-mist);
+  }
+
+  .om-bar-hp {
+    position: relative;
+    height: 7px;
+    margin-top: 0.28rem;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.09);
+    overflow: hidden;
+  }
+
+  .om-bar-hp i {
+    position: absolute;
+    inset: 0 auto 0 0;
+    display: block;
+    border-radius: 999px;
+    background: #fb7185;
+  }
+
+  .om-hp-num {
+    display: block;
+    margin-top: 0.2rem;
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    color: var(--color-fog);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .om-foe--target .om-foe-glyph {
+    text-shadow: 0 0 18px currentColor;
+  }
+
+  .om-foe--dead {
+    opacity: 0.25;
+    pointer-events: none;
+  }
+
+  .om-mid {
+    display: grid;
+    grid-template-columns: 200px minmax(0, 1fr);
+    gap: 0.9rem;
+    align-items: stretch;
+  }
+
+  .om-me {
+    padding: 0.6rem 0.7rem;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+  }
+
+  .om-me-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.5rem;
+    font-family: var(--font-mono);
+    font-size: 0.74rem;
+    color: var(--color-fog);
+  }
+
+  .om-me-row b {
+    color: #fff;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .om-sts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+    margin-top: 0.4rem;
+  }
+
+  .om-st {
+    padding: 0.1rem 0.38rem;
+    border-radius: 6px;
+    font-size: 0.68rem;
+    font-family: var(--font-mono);
+    background: rgba(34, 211, 238, 0.14);
+    border: 1px solid rgba(34, 211, 238, 0.3);
+    color: #bdf3ff;
+  }
+
+  .om-st--bad {
+    background: rgba(251, 113, 133, 0.14);
+    border-color: rgba(251, 113, 133, 0.3);
+    color: #ffd6dd;
+  }
+
+  .om-log {
+    overflow-y: auto;
+    max-height: 104px;
+    padding: 0.5rem 0.7rem;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.025);
+    border: 1px solid rgba(255, 255, 255, 0.055);
+    font-size: 0.74rem;
+    line-height: 1.7;
+    color: var(--color-fog);
+  }
+
+  .om-log p {
+    margin: 0 0 0.12rem;
+  }
+
+  .om-log b {
+    color: var(--color-mist);
+  }
+
+  /* ---------- 手牌 ---------- */
+  .om-hand {
+    display: flex;
+    justify-content: center;
+    align-items: flex-end;
+    align-content: flex-end;
+    gap: 0.4rem;
+    flex-wrap: nowrap;
+    flex-shrink: 0;
+    /* 极端情况下（十几张）宁可横向滑，也不能把签挤出画面看不到 */
+    justify-content: safe center;
+    overflow-x: auto;
+    overflow-y: hidden;
+    min-height: 156px;
+    padding: 0.3rem 0 0;
+    scrollbar-width: none;
+  }
+
+  .om-card {
+    position: relative;
+    /* 手牌多的时候由 JS 写入 --om-card-w，保证永远单排不换行 */
+    width: var(--om-card-w, 104px);
+    flex: 0 0 auto;
+    min-height: 148px;
+    padding: 0.5rem 0.5rem 0.55rem;
+    text-align: left;
+    border-radius: 12px;
+    cursor: pointer;
+    color: var(--color-mist);
+    background: linear-gradient(170deg, rgba(30, 38, 58, 0.96), rgba(11, 15, 26, 0.96));
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    transition:
+      transform 0.18s cubic-bezier(0.22, 1, 0.36, 1),
+      border-color 0.18s ease,
+      box-shadow 0.18s ease;
+  }
+
+  .om-card:hover {
+    transform: translateY(-7px);
+    border-color: rgba(34, 211, 238, 0.55);
+    box-shadow: 0 16px 34px -18px rgba(34, 211, 238, 0.8);
+  }
+
+  .om-card--off {
+    opacity: 0.42;
+    cursor: not-allowed;
+  }
+
+  .om-card--off:hover {
+    transform: none;
+    border-color: rgba(255, 255, 255, 0.1);
+    box-shadow: none;
+  }
+
+  .om-card--攻 {
+    border-top: 2px solid #fb7185;
+  }
+
+  .om-card--守 {
+    border-top: 2px solid #22d3ee;
+  }
+
+  .om-card--术 {
+    border-top: 2px solid #a78bfa;
+  }
+
+  .om-card--势 {
+    border-top: 2px solid #fbbf24;
+  }
+
+  .om-cost {
+    position: absolute;
+    top: -9px;
+    left: -7px;
+    width: 24px;
+    height: 24px;
+    display: grid;
+    place-items: center;
+    border-radius: 50%;
+    font-family: var(--font-mono);
+    font-size: 0.76rem;
+    font-weight: 700;
+    color: #04070e;
+    background: linear-gradient(140deg, #67e8f9, #22d3ee);
+  }
+
+  .om-ctype {
+    position: absolute;
+    top: 0.35rem;
+    right: 0.45rem;
+    font-size: 0.62rem;
+    letter-spacing: 0.1em;
+    color: var(--color-fog);
+  }
+
+  .om-cname {
+    display: block;
+    margin: 0.1rem 0 0.3rem;
+    font-size: 0.92rem;
+    font-family: var(--font-display);
+    color: #fff;
+  }
+
+  .om-cen {
+    display: block;
+    margin-bottom: 0.28rem;
+    font-family: var(--font-mono);
+    font-size: 0.56rem;
+    letter-spacing: 0.16em;
+    color: var(--color-fog);
+  }
+
+  .om-ctext {
+    display: block;
+    font-size: 0.7rem;
+    line-height: 1.55;
+  }
+
+  .om-ctag {
+    display: block;
+    margin-top: 0.3rem;
+    font-family: var(--font-mono);
+    font-size: 0.58rem;
+    color: #fbbf24;
+    opacity: 0.85;
+  }
+
+  .om-bar {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    padding-top: 0.15rem;
+  }
+
+  .om-energy {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-family: var(--font-mono);
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: #67e8f9;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .om-energy span {
+    font-size: 0.68rem;
+    font-weight: 400;
+    color: var(--color-fog);
+  }
+
+  .om-piles {
+    flex: 1;
+    display: flex;
+    gap: 0.4rem;
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    color: var(--color-fog);
+  }
+
+  .om-pile {
+    padding: 0.16rem 0.44rem;
+    border-radius: 7px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  .om-end {
+    padding: 0.5rem 1.15rem;
+    border: 0;
+    border-radius: 999px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    color: #04070e;
+    background: linear-gradient(120deg, var(--color-cyan), #7dd3fc 45%, var(--color-violet));
+    transition:
+      transform 0.2s ease,
+      filter 0.2s ease;
+  }
+
+  .om-end:hover {
+    transform: translateY(-2px);
+    filter: brightness(1.06);
+  }
+
+  /* ---------- 场景 ---------- */
+  .om-scene {
+    padding: 1.1rem 1.2rem;
+    gap: 0.7rem;
+    overflow-y: auto;
+  }
+
+  .om-sc-kicker {
+    margin: 0;
+    font-family: var(--font-mono);
+    font-size: 0.62rem;
+    letter-spacing: 0.3em;
+    color: var(--color-cyan);
+  }
+
+  .om-sc-title {
+    margin: 0.3rem 0 0.2rem;
+    font-family: var(--font-display);
+    font-size: 1.35rem;
+    color: #fff;
+  }
+
+  .om-sc-body {
+    margin: 0 0 0.5rem;
+    font-size: 0.84rem;
+    line-height: 1.85;
+    color: var(--color-fog);
+    max-width: 60ch;
+  }
+
+  .om-sc-opts {
+    display: grid;
+    gap: 0.45rem;
+  }
+
+  .om-opt {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.8rem;
+    padding: 0.65rem 0.9rem;
+    text-align: left;
+    border-radius: 12px;
+    cursor: pointer;
+    font-family: inherit;
+    color: var(--color-mist);
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    transition:
+      border-color 0.2s ease,
+      background 0.2s ease,
+      transform 0.2s ease;
+  }
+
+  .om-opt:hover {
+    border-color: rgba(34, 211, 238, 0.5);
+    background: rgba(34, 211, 238, 0.07);
+    transform: translateX(3px);
+  }
+
+  .om-opt b {
+    display: block;
+    font-size: 0.86rem;
+    color: #fff;
+    font-weight: 500;
+  }
+
+  .om-opt span {
+    font-size: 0.72rem;
+    color: var(--color-fog);
+  }
+
+  .om-opt--off {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+
+  .om-opt--off:hover {
+    transform: none;
+    border-color: rgba(255, 255, 255, 0.09);
+    background: rgba(255, 255, 255, 0.04);
+  }
+
+  .om-pick {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .om-pick .om-card {
+    cursor: pointer;
+  }
+
+  .om-pick--grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(112px, 1fr));
+    gap: 0.45rem;
+  }
+
+  .om-deck-card {
+    display: flex;
+    align-items: baseline;
+    gap: 0.5rem;
+    padding: 0.34rem 0.6rem;
+    border-radius: 9px;
+    font-size: 0.76rem;
+    background: rgba(255, 255, 255, 0.035);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+  }
+
+  .om-deck-card b {
+    color: #fff;
+    font-weight: 500;
+  }
+
+  .om-deck-card i {
+    font-style: normal;
+    font-family: var(--font-mono);
+    font-size: 0.66rem;
+    color: var(--color-fog);
+  }
+
+  .om-deck-card span {
+    margin-left: auto;
+    font-size: 0.7rem;
+    color: var(--color-fog);
+  }
+
+  .om-sc-foot {
+    margin-top: 0.3rem;
+  }
+
+  /* ---------- 卜器格 ---------- */
+  .om-relics {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3rem;
+  }
+
+  .om-relic {
+    width: 28px;
+    height: 28px;
+    display: grid;
+    place-items: center;
+    border-radius: 8px;
+    font-size: 0.92rem;
+    color: #bdf3ff;
+    background: rgba(34, 211, 238, 0.12);
+    border: 1px solid rgba(34, 211, 238, 0.28);
+    cursor: help;
+  }
+
+  .om-relic-empty {
+    font-size: 0.74rem;
+    color: var(--color-fog);
+  }
+
+  .om-mini-btn {
+    margin-top: 0.5rem;
+    width: 100%;
+    padding: 0.42rem;
+    border-radius: 9px;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 0.74rem;
+    color: var(--color-mist);
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .om-mini-btn:hover {
+    border-color: rgba(34, 211, 238, 0.5);
+  }
+
+  @media (max-width: 980px) {
+    .om-mid {
+      grid-template-columns: 1fr;
+    }
+    .om-log {
+      max-height: 78px;
+    }
+  }
+
+  @media (max-width: 640px) {
+    /* 手机上先给游戏让位：砍掉长描述，标题收到一行 */
+    .om-head {
+      margin-bottom: 0.75rem;
+    }
+
+    .om-head .gx-sub {
+      display: none;
+    }
+
+    .om-head .gx-title {
+      font-size: 1.4rem;
+      margin-bottom: 0;
+    }
+
+    .om-screen,
+    .om-view {
+      min-height: 520px;
+    }
+
+    .om-battle {
+      padding: 0.7rem 0.6rem 0.6rem;
+      gap: 0.45rem;
+    }
+
+    /* 手牌横排一行、可左右滑，绝不换行把结束回合顶下去 */
+    .om-hand {
+      flex-wrap: nowrap;
+      justify-content: flex-start;
+      overflow-x: auto;
+      overflow-y: hidden;
+      min-height: 138px;
+      padding-bottom: 0.2rem;
+      scrollbar-width: none;
+    }
+
+    .om-hand::-webkit-scrollbar {
+      display: none;
+    }
+
+    .om-card {
+      flex: 0 0 auto;
+      width: 86px;
+      min-height: 128px;
+      padding: 0.4rem 0.4rem 0.45rem;
+    }
+
+    .om-cname {
+      font-size: 0.84rem;
+    }
+
+    .om-ctext {
+      font-size: 0.65rem;
+    }
+
+    .om-foes {
+      gap: 0.6rem;
+      min-height: 126px;
+    }
+
+    .om-foe {
+      width: 96px;
+    }
+
+    .om-foe-glyph {
+      font-size: 2rem;
+    }
+
+    .om-log {
+      max-height: 62px;
+    }
+
+    .om-end {
+      padding: 0.46rem 0.9rem;
+      font-size: 0.78rem;
+    }
+
+    .om-scene {
+      padding: 0.9rem 0.8rem;
+    }
+  }
+
+  :root[data-theme='light'] .om-card {
+    background: linear-gradient(170deg, #f7f9fd, #e8ecf5);
+    border-color: rgba(11, 16, 32, 0.12);
+  }
+
+  :root[data-theme='light'] .om-cname {
+    color: #10131d;
+  }
+
+  :root[data-theme='light'] .om-card {
+    color: #3b4356;
+  }
+
+  :root[data-theme='light'] .om-log,
+  :root[data-theme='light'] .om-me,
+  :root[data-theme='light'] .om-sc-body {
+    color: #4a5265;
+  }
+
+  :root[data-theme='light'] .om-opt {
+    color: #3b4356;
+    background: rgba(11, 16, 32, 0.03);
+    border-color: rgba(11, 16, 32, 0.1);
+  }
+
+  :root[data-theme='light'] .om-opt b {
+    color: #10131d;
+  }
+
+  :root[data-theme='light'] .om-deck-card {
+    background: rgba(11, 16, 32, 0.03);
+    border-color: rgba(11, 16, 32, 0.08);
+  }
+
+  :root[data-theme='light'] .om-deck-card b {
+    color: #10131d;
+  }
+
+  :root[data-theme='light'] .om-me-row b {
+    color: #10131d;
+  }
+
+  :root[data-theme='light'] .om-sc-title {
+    color: #10131d;
+  }
+
+  :root[data-theme='light'] .om-st {
+    color: #0a5566;
+  }
+
+  :root[data-theme='light'] .om-relic {
+    color: #0a5566;
+  }
+</style>
+
+<script>
+  import { readStat, recordRun, store } from '../../lib/save-store';
+  import {
+    CARD_MAP,
+    POOL_COMMON,
+    POOL_RARE,
+    POOL_SECRET,
+    STARTER,
+    renderText,
+  } from '../../games/omen/cards';
+  import { ELITES, ENEMY_MAP, pickEncounter } from '../../games/omen/enemies';
+  import { RELIC_MAP, RELICS, relicPool } from '../../games/omen/relics';
+  import { EVENTS } from '../../games/omen/events';
+  import type {
+    CardType,
+    EnemyState,
+    EventDef,
+    Intent,
+    MapNode,
+    NodeKind,
+    RelicDef,
+    StatusKey,
+  } from '../../games/omen/types';
+
+  /* ============================================================
+     常量
+     ============================================================ */
+  const FLOORS = 15;
+  const BASE_ENERGY = 3;
+  const BASE_DRAW = 5;
+  const START_HP = 72;
+  const START_GOLD = 99;
+  const META_PATH = 'games.omen.meta';
+
+  const TEMP_STATUS: StatusKey[] = ['易', '弱', '静'];
+  const BAD_STATUS: StatusKey[] = ['易', '弱', '静'];
+  const STATUS_LABEL: Record<StatusKey, string> = {
+    锐: '锐',
+    韧: '韧',
+    易: '易',
+    弱: '弱',
+    静: '静',
+    卦: '卦',
+    岩: '岩',
+    润: '润',
+    裕: '裕',
+  };
+
+  const KIND_LABEL: Record<NodeKind, string> = {
+    战: '战',
+    精: '精',
+    事: '事',
+    肆: '肆',
+    焚: '焚',
+    首: '首',
+  };
+  const KIND_NAME: Record<NodeKind, string> = {
+    战: '战斗',
+    精: '精英',
+    事: '事件',
+    肆: '卜肆',
+    焚: '焚签',
+    首: '问卜',
+  };
+
+  /* ============================================================
+     随机数：同一颗种子必然长出同一局
+     ============================================================ */
+  function hashSeed(s: string): number {
+    let h = 1779033703 ^ s.length;
+    for (let i = 0; i < s.length; i++) {
+      h = Math.imul(h ^ s.charCodeAt(i), 3432918353);
+      h = (h << 13) | (h >>> 19);
+    }
+    return h >>> 0;
+  }
+
+  function mulberry32(a: number) {
+    return () => {
+      a = (a + 0x6d2b79f5) | 0;
+      let t = Math.imul(a ^ (a >>> 15), 1 | a);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  function rngFrom(seed: string) {
+    return mulberry32(hashSeed(seed));
+  }
+
+  /* ============================================================
+     状态
+     ============================================================ */
+  type CardInst = { id: string; up: boolean; uid: number };
+  type View = 'title' | 'map' | 'battle' | 'scene';
+
+  interface Run {
+    seed: string;
+    daily: boolean;
+    hp: number;
+    hpBase: number;
+    hpMax: number;
+    gold: number;
+    deck: CardInst[];
+    relics: string[];
+    map: MapNode[];
+    cur: number;
+    floor: number;
+    kills: number;
+    cleared: number;
+    busy: boolean;
+  }
+
+  interface Battle {
+    foes: EnemyState[];
+    hand: CardInst[];
+    draw: CardInst[];
+    discard: CardInst[];
+    gone: CardInst[];
+    energy: number;
+    energyMax: number;
+    turn: number;
+    block: number;
+    st: Partial<Record<StatusKey, number>>;
+    target: number;
+    played: Record<CardType, number> & { all: number };
+    flags: { keepBlock: boolean; nextEnergy: number; doubleNext: boolean };
+    log: string[];
+    firstCardUsed: boolean;
+    tookHit: boolean;
+    over: boolean;
+    kind: NodeKind;
+  }
+
+  let uidSeq = 1;
+  let run: Run | null = null;
+  let bt: Battle | null = null;
+  let view: View = 'title';
+  let bRng: () => number = Math.random;
+  /** 场景里选过一次就锁住，防手快连点拿双份 */
+  let sceneLocked = false;
+  let keyHandler: ((e: KeyboardEvent) => void) | null = null;
+  let meta = { wins: 0, runs: 0, streak: 0, bestStreak: 0 };
+
+  const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T | null;
+  const pick = <T,>(a: T[], r: () => number): T => a[Math.floor(r() * a.length)];
+  const mk = (id: string, up = false): CardInst => ({ id, up, uid: uidSeq++ });
+  const shuffle = <T,>(a: T[], r: () => number): T[] => {
+    const x = a.slice();
+    for (let i = x.length - 1; i > 0; i--) {
+      const j = Math.floor(r() * (i + 1));
+      [x[i], x[j]] = [x[j], x[i]];
+    }
+    return x;
+  };
+
+  /* ============================================================
+     卜器：把字段折算成数值
+     ============================================================ */
+  const has = (id: string) => !!run?.relics.includes(id);
+
+  function relicSum<K extends keyof RelicDef>(key: K): number {
+    if (!run) return 0;
+    let n = 0;
+    for (const id of run.relics) {
+      const v = RELIC_MAP[id]?.[key];
+      if (typeof v === 'number') n += v;
+    }
+    return n;
+  }
+
+  function relicFlag(key: keyof RelicDef): boolean {
+    return !!run?.relics.some((id) => RELIC_MAP[id]?.[key]);
+  }
+
+  function recomputeMaxHp() {
+    if (!run) return;
+    run.hpMax = run.hpBase + relicSum('maxHpPerRelic') * run.relics.length;
+    if (run.hp > run.hpMax) run.hp = run.hpMax;
+  }
+
+  /** 拿到一件卜器：空碗之类的「每件 +N」会把上限顶上去，血也跟着涨 */
+  function gainRelic(id: string) {
+    if (!run) return;
+    const before = run.hpMax - run.hpBase;
+    run.relics.push(id);
+    recomputeMaxHp();
+    const after = run.hpMax - run.hpBase;
+    if (after > before) run.hp = Math.min(run.hpMax, run.hp + (after - before));
+  }
+
+  /* ============================================================
+     地图生成
+     ============================================================ */
+  function pickKind(f: number, r: () => number): NodeKind {
+    if (f === 0) return '战';
+    if (f === FLOORS - 1) return '首';
+    if (f === FLOORS - 2) return '焚';
+    if (f === 7) return '肆';
+    if (f === 5) return '精';
+    const x = r();
+    if (x < 0.5) return '战';
+    if (x < 0.72) return '事';
+    if (x < 0.82) return '肆';
+    if (x < 0.92) return '焚';
+    return '精';
+  }
+
+  function genMap(r: () => number): MapNode[] {
+    const nodes: MapNode[] = [];
+    const floors: number[][] = [];
+    for (let f = 0; f < FLOORS; f++) {
+      let count: number;
+      if (f === 0) count = 2;
+      else if (f === FLOORS - 1) count = 1;
+      else count = 2 + (r() < 0.55 ? 1 : 0) + (r() < 0.2 ? 1 : 0);
+      const idxs: number[] = [];
+      for (let s = 0; s < count; s++) {
+        nodes.push({
+          floor: f,
+          slot: s,
+          kind: pickKind(f, r),
+          next: [],
+          visited: false,
+          reachable: false,
+        });
+        idxs.push(nodes.length - 1);
+      }
+      floors.push(idxs);
+    }
+
+    for (let f = 0; f < FLOORS - 1; f++) {
+      const cur = floors[f];
+      const nxt = floors[f + 1];
+      for (const i of cur) {
+        const s = nodes[i].slot;
+        const base = Math.round((s / Math.max(1, cur.length - 1)) * (nxt.length - 1));
+        const cand = [base - 1, base, base + 1].filter((x) => x >= 0 && x < nxt.length);
+        const out: number[] = [];
+        for (const c of cand.length ? cand : [0]) {
+          if (out.length === 0 || r() < 0.72) out.push(c);
+        }
+        nodes[i].next = [...new Set(out)].map((c) => nxt[c]);
+      }
+      for (const j of nxt) {
+        if (!nodes.some((n) => n.next.includes(j))) {
+          nodes[pick(cur, r)].next.push(j);
+        }
+      }
+    }
+    return nodes;
+  }
+
+  function markReachable() {
+    if (!run) return;
+    for (const n of run.map) n.reachable = false;
+    const cur = run.map[run.cur];
+    if (!cur) {
+      for (const n of run.map) if (n.floor === 0) n.reachable = true;
+      return;
+    }
+    for (const j of cur.next) run.map[j].reachable = true;
+  }
+
+  function nodeXY(n: MapNode, count: number) {
+    const y = 30 + n.floor * 38;
+    const x = count > 1 ? 78 + n.slot * (244 / (count - 1)) : 200;
+    return { x, y };
+  }
+
+  function floorCount(f: number) {
+    return run ? run.map.filter((n) => n.floor === f).length : 0;
+  }
+
+  function renderMap() {
+    if (!run) return;
+    const svg = $('omMapSvg');
+    if (!svg) return;
+    markReachable();
+    const reveal = relicFlag('revealNext');
+
+    let lines = '';
+    let dots = '';
+    for (const n of run.map) {
+      const c1 = floorCount(n.floor);
+      const a = nodeXY(n, c1);
+      for (const j of n.next) {
+        const m = run.map[j];
+        const b = nodeXY(m, floorCount(m.floor));
+        const on = n.visited && (m.reachable || m.visited);
+        lines += `<path d="M${a.x} ${a.y} C ${a.x} ${(a.y + b.y) / 2}, ${b.x} ${(a.y + b.y) / 2}, ${b.x} ${b.y}" fill="none" stroke="${on ? 'rgba(34,211,238,.55)' : 'rgba(255,255,255,.13)'}" stroke-width="${on ? 2 : 1.4}"/>`;
+      }
+    }
+
+    for (let i = 0; i < run.map.length; i++) {
+      const n = run.map[i];
+      const c = floorCount(n.floor);
+      const p = nodeXY(n, c);
+      const future = n.floor > run.floor + (reveal ? 1 : 0);
+      let fill = 'rgba(255,255,255,.05)';
+      let stroke = 'rgba(255,255,255,.16)';
+      let txt = 'rgba(255,255,255,.35)';
+      if (n.visited) {
+        fill = 'rgba(34,211,238,.1)';
+        stroke = 'rgba(34,211,238,.4)';
+        txt = 'rgba(189,243,255,.6)';
+      } else if (n.reachable) {
+        fill = 'rgba(34,211,238,.24)';
+        stroke = '#22d3ee';
+        txt = '#eafdff';
+      } else if (n.kind === '首') {
+        fill = 'rgba(251,113,133,.12)';
+        stroke = 'rgba(251,113,133,.45)';
+        txt = 'rgba(255,214,221,.8)';
+      } else if (n.kind === '精') {
+        fill = 'rgba(251,191,36,.1)';
+        stroke = 'rgba(251,191,36,.35)';
+        txt = 'rgba(253,230,138,.75)';
+      }
+      if (future && !n.visited && !n.reachable) txt = 'rgba(255,255,255,.16)';
+      const live = n.reachable && !n.visited ? ' om-node--live' : '';
+      dots += `<g class="om-node${live}" data-node="${i}">
+        <circle cx="${p.x}" cy="${p.y}" r="13" fill="${fill}" stroke="${stroke}" stroke-width="1.4"/>
+        <text x="${p.x}" y="${p.y + 4.5}" text-anchor="middle" font-family="var(--font-display)" font-size="12" fill="${txt}">${KIND_LABEL[n.kind]}</text>
+      </g>`;
+    }
+
+    svg.innerHTML = lines + dots;
+    const k = $('omMapKicker');
+    if (k) k.textContent = `第 ${run.floor + 1} 层 / ${FLOORS} · ${run.daily ? '每日种子 ' + run.seed : '种子 ' + run.seed}`;
+
+    svg.querySelectorAll('[data-node]').forEach((el) => {
+      el.addEventListener('click', () => {
+        const i = Number((el as SVGElement).getAttribute('data-node'));
+        enterNode(i);
+      });
+    });
+  }
+
+  /* ============================================================
+     侧栏
+     ============================================================ */
+  function renderSide() {
+    if (!run) return;
+    const set = (id: string, v: string) => {
+      const el = $(id);
+      if (el) el.textContent = v;
+    };
+    set('omHp', String(Math.max(0, run.hp)));
+    set('omHpMax', String(run.hpMax));
+    set('omGold', String(run.gold));
+    set('omFloor', String(run.floor + 1));
+    set('omDeckN', String(run.deck.length));
+    set('omRelicN', String(run.relics.length));
+
+    const box = $('omRelics');
+    if (box) {
+      box.innerHTML = run.relics.length
+        ? run.relics
+            .map((id) => {
+              const r = RELIC_MAP[id];
+              return r ? `<span class="om-relic" title="${r.name}：${r.text}">${r.glyph}</span>` : '';
+            })
+            .join('')
+        : '<span class="om-relic-empty">还没有</span>';
+    }
+  }
+
+  /* ============================================================
+     视图切换
+     ============================================================ */
+  function show(v: View) {
+    view = v;
+    const ids: Record<View, string> = {
+      title: 'omOverlay',
+      map: 'omMapView',
+      battle: 'omBattleView',
+      scene: 'omSceneView',
+    };
+    for (const id of Object.values(ids)) {
+      const el = $(id);
+      if (el) el.hidden = id !== ids[v];
+    }
+  }
+
+  function overlay(kicker: string, title: string, desc: string, btn: string, btn2?: string) {
+    const k = $('omKicker');
+    const t = $('omTitle');
+    const d = $('omDesc');
+    const b = $<HTMLButtonElement>('omBtn');
+    const b2 = $<HTMLButtonElement>('omBtn2');
+    if (k) k.textContent = kicker;
+    if (t) t.textContent = title;
+    if (d) d.innerHTML = desc;
+    if (b) b.textContent = btn;
+    if (b2) {
+      b2.hidden = !btn2;
+      if (btn2) b2.textContent = btn2;
+    }
+    show('title');
+  }
+
+  /* ============================================================
+     开一局
+     ============================================================ */
+  function newRun(daily: boolean) {
+    const seed = daily ? dailySeed() : String(Date.now() ^ Math.floor(Math.random() * 1e9));
+    const r = rngFrom(seed + ':map');
+    run = {
+      seed,
+      daily,
+      hp: START_HP,
+      hpBase: START_HP,
+      hpMax: START_HP,
+      gold: START_GOLD,
+      deck: STARTER.flatMap((s) => Array.from({ length: s.n }, () => mk(s.id))),
+      relics: [],
+      map: genMap(r),
+      cur: -1,
+      floor: 0,
+      kills: 0,
+      cleared: 0,
+      busy: false,
+    };
+    bt = null;
+    renderSide();
+    renderMap();
+    show('map');
+  }
+
+  function dailySeed() {
+    const d = new Date();
+    const p = (n: number) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}`;
+  }
+
+  /* ============================================================
+     进节点
+     ============================================================ */
+  function enterNode(i: number) {
+    if (!run || run.busy) return;
+    const n = run.map[i];
+    if (!n || n.visited) return;
+    if (run.cur >= 0 && !run.map[run.cur].next.includes(i)) return;
+
+    run.cur = i;
+    n.visited = true;
+    run.floor = n.floor;
+    markReachable();
+    renderSide();
+
+    const heal = relicSum('floorHeal');
+    if (heal) run.hp = Math.min(run.hpMax, run.hp + heal);
+    const gain = relicSum('floorMaxHp');
+    if (gain) {
+      run.hpBase += gain;
+      run.hp += gain;
+      recomputeMaxHp();
+    }
+    renderSide();
+
+    if (n.kind === '战' || n.kind === '精' || n.kind === '首') startBattle(n.kind);
+    else if (n.kind === '事') showEvent();
+    else if (n.kind === '肆') showShop();
+    else showRest();
+  }
+
+  /* ============================================================
+     战斗
+     ============================================================ */
+  function foeFrom(id: string, r: () => number): EnemyState {
+    const d = ENEMY_MAP[id];
+    const hp = d.hp[0] + Math.floor(r() * (d.hp[1] - d.hp[0] + 1));
+    const f: EnemyState = {
+      id,
+      name: d.name,
+      glyph: d.glyph,
+      hue: d.hue,
+      hp,
+      hpMax: hp,
+      block: 0,
+      st: {},
+      intent: { kind: '未知', value: 0, times: 0, note: '—' },
+      alive: true,
+    };
+    f.intent = d.act(r, 0, f);
+    return f;
+  }
+
+  function rollIntent(f: EnemyState, rng: () => number, turn: number) {
+    f.intent = ENEMY_MAP[f.id].act(rng, turn, f);
+  }
+
+  function startBattle(kind: NodeKind) {
+    if (!run) return;
+    const r = rngFrom(`${run.seed}:b:${run.floor}:${run.cur}`);
+    bRng = r;
+    const ids =
+      kind === '首' ? ['wuming'] : kind === '精' ? [pick(ELITES, r)] : pickEncounter(run.floor, r);
+    const foes = ids.map((id) => foeFrom(id, r));
+
+    bt = {
+      foes,
+      hand: [],
+      draw: shuffle(run.deck.map((c) => ({ ...c })), r),
+      discard: [],
+      gone: [],
+      energy: 0,
+      energyMax: BASE_ENERGY,
+      turn: 0,
+      block: 0,
+      st: {},
+      target: 0,
+      played: { 攻: 0, 守: 0, 术: 0, 势: 0, all: 0 },
+      flags: { keepBlock: false, nextEnergy: 0, doubleNext: false },
+      log: [],
+      firstCardUsed: false,
+      tookHit: false,
+      over: false,
+      kind,
+    };
+
+    if (relicFlag('battleStartBlock')) rawBlock(relicSum('battleStartBlock'));
+    for (const id of run.relics) {
+      const rl = RELIC_MAP[id];
+      if (!rl) continue;
+      if (rl.battleStartStatus) addStatus('self', rl.battleStartStatus.k, rl.battleStartStatus.n);
+      if (rl.battleStartFoeStatus) {
+        for (const f of bt.foes) addStatus('foe', rl.battleStartFoeStatus.k, rl.battleStartFoeStatus.n, f);
+      }
+    }
+    const innate = relicSum('innateStrike');
+    for (let i = 0; i < innate; i++) bt.hand.push(mk('kou'));
+
+    say(`第 ${run.floor + 1} 层 · ${KIND_NAME[kind]}`);
+    startTurn(true);
+
+    if (relicFlag('copyFirstCard')) {
+      const pool = bt.hand.filter((c) => c.id !== 'zhongfu');
+      if (pool.length) {
+        const c = pick(pool, r);
+        bt.hand.push(mk(c.id, c.up));
+        say('双面镜照出了一张同样的签。');
+      }
+    }
+
+    show('battle');
+    renderBattle();
+  }
+
+  function startTurn(first: boolean) {
+    if (!bt) return;
+    bt.turn += 1;
+    bt.played = { 攻: 0, 守: 0, 术: 0, 势: 0, all: 0 };
+    bt.firstCardUsed = false;
+    bt.flags.doubleNext = false;
+
+    bt.energyMax = BASE_ENERGY + (bt.st.卦 || 0) + relicSum('energyPerTurn') + bt.flags.nextEnergy;
+    bt.flags.nextEnergy = 0;
+    const every = relicSum('energyEvery');
+    if (every > 0 && bt.turn % every === 0) bt.energyMax += 1;
+    bt.energy = Math.max(0, bt.energyMax);
+
+    if (!bt.flags.keepBlock) bt.block = 0;
+    bt.flags.keepBlock = false;
+
+    const rock = bt.st.岩 || 0;
+    if (rock > 0) rawBlock(rock);
+
+    let n = BASE_DRAW + (bt.st.裕 || 0) - (bt.st.静 || 0) - relicSum('handPenalty');
+    if (first && relicFlag('firstTurnDraw')) n += relicSum('firstTurnDraw');
+    drawCards(Math.max(1, n));
+
+    if (bt.st.静) bt.st.静 = Math.max(0, (bt.st.静 || 0) - 1);
+
+    for (const f of bt.foes) if (f.alive) f.block = 0;
+    renderBattle();
+  }
+
+  function drawCards(n: number) {
+    if (!bt) return;
+    for (let i = 0; i < n; i++) {
+      if (!bt.draw.length) {
+        if (!bt.discard.length) break;
+        bt.draw = shuffle(bt.discard, bRng);
+        bt.discard = [];
+        say('弃签洗回筒中。');
+      }
+      bt.hand.push(bt.draw.pop() as CardInst);
+    }
+  }
+
+  function costOf(c: CardInst): number {
+    const d = CARD_MAP[c.id];
+    if (!d) return 0;
+    const base = c.up && d.upCost != null ? d.upCost : d.cost;
+    if (bt && !bt.firstCardUsed && relicFlag('firstCardFree')) {
+      return Math.max(0, base - relicSum('firstCardFree'));
+    }
+    return base;
+  }
+
+  function canPlay(c: CardInst): boolean {
+    if (!bt || bt.over) return false;
+    return bt.energy >= costOf(c);
+  }
+
+  function playable(c: CardInst) {
+    return !!bt && !bt.over && bt.energy >= costOf(c);
+  }
+
+  /* ---------- 结算数值 ---------- */
+  function rawBlock(n: number) {
+    if (!bt) return;
+    bt.block += n;
+  }
+
+  function gainBlock(n: number) {
+    if (!bt) return;
+    bt.block += n + (bt.st.韧 || 0);
+  }
+
+  function playerDamage(base: number, foe: EnemyState | null): number {
+    if (!bt) return 0;
+    let d = base + (bt.st.锐 || 0);
+    if (bt.st.弱) d = Math.floor(d * 0.75);
+    if (foe && (foe.st.易 || 0) > 0) d = Math.floor(d * 1.5);
+    return Math.max(0, d);
+  }
+
+  function foeDamage(base: number, foe: EnemyState): number {
+    let d = base + (foe.st.锐 || 0);
+    if (foe.st.弱) d = Math.floor(d * 0.75);
+    if (bt?.st.易) d = Math.floor(d * 1.5);
+    return Math.max(0, d);
+  }
+
+  function addStatus(who: 'self' | 'foe', k: StatusKey, n: number, f?: EnemyState) {
+    if (who === 'self' && bt) bt.st[k] = (bt.st[k] || 0) + n;
+    else if (f) f.st[k] = (f.st[k] || 0) + n;
+  }
+
+  function hitFoe(i: number, base: number, isAttack: boolean) {
+    if (!bt) return;
+    const f = bt.foes[i];
+    if (!f || !f.alive) return;
+    let d = playerDamage(base, f);
+    if (isAttack) d += relicSum('attackBonus');
+    if (f.block > 0) {
+      const absorbed = Math.min(f.block, d);
+      f.block -= absorbed;
+      d -= absorbed;
+    }
+    f.hp -= d;
+    say(`对 ${f.name} 造成 ${d} 点伤害${f.block > 0 ? '' : ''}。`);
+    if (f.hp <= 0) {
+      f.hp = 0;
+      f.alive = false;
+      if (run) run.kills += 1;
+      say(`${f.name} 散了。`);
+    }
+  }
+
+  function healPlayer(n: number) {
+    if (!run) return;
+    run.hp = Math.min(run.hpMax, run.hp + n);
+  }
+
+  function hurtPlayer(n: number) {
+    if (!run) return;
+    run.hp = Math.max(0, run.hp - n);
+  }
+
+  function say(s: string) {
+    if (!bt) return;
+    bt.log.push(s);
+    if (bt.log.length > 40) bt.log.shift();
+  }
+
+  /* ---------- 打出一张签 ---------- */
+  function cast(i: number) {
+    if (!bt || bt.over) return;
+    const c = bt.hand[i];
+    if (!c) return;
+    if (!playable(c)) return;
+    const d = CARD_MAP[c.id];
+    if (!d) return;
+
+    if (bt.target < 0 || !bt.foes[bt.target]?.alive) {
+      const t = bt.foes.findIndex((f) => f.alive);
+      if (t < 0) return;
+      bt.target = t;
+    }
+
+    bt.energy -= costOf(c);
+    bt.firstCardUsed = true;
+
+    const vals = (c.up && d.upVals ? d.upVals : d.vals).slice();
+    if (bt.flags.doubleNext) {
+      for (let k = 0; k < vals.length; k++) vals[k] = Math.round(vals[k] * 2);
+      bt.flags.doubleNext = false;
+      say('姤：这一张，翻倍。');
+    }
+
+    const snap = { ...bt.played };
+    const isAttack = d.type === '攻';
+    const ctx = {
+      v: vals,
+      target: bt.target,
+      f: bt.flags,
+      turn: bt.turn,
+      energyNow: bt.energy,
+      handIds: bt.hand.map((x) => x.id),
+      played: snap,
+      hit: (idx: number, dmg: number) => hitFoe(idx < 0 ? bt!.target : idx, dmg, isAttack),
+      hitAll: (dmg: number) => {
+        bt!.foes.forEach((f, k) => {
+          if (f.alive) hitFoe(k, dmg, isAttack);
+        });
+      },
+      hitRandom: (dmg: number) => {
+        const live = bt!.foes.map((f, k) => (f.alive ? k : -1)).filter((k) => k >= 0);
+        if (live.length) hitFoe(pick(live, bRng), dmg, isAttack);
+      },
+      block: (n: number) => gainBlock(n),
+      heal: (n: number) => healPlayer(n),
+      hurt: (n: number) => hurtPlayer(n),
+      draw: (n: number) => drawCards(n),
+      discardRandom: (n: number) => {
+        for (let k = 0; k < n && bt!.hand.length; k++) {
+          const j = Math.floor(bRng() * bt!.hand.length);
+          bt!.discard.push(bt!.hand.splice(j, 1)[0]);
+        }
+      },
+      addToHand: (id: string, n = 1) => {
+        for (let k = 0; k < n; k++) bt!.hand.push(mk(id));
+      },
+      addToDiscard: (id: string) => bt!.discard.push(mk(id)),
+      recycle: (n: number) => {
+        for (let k = 0; k < n && bt!.discard.length; k++) {
+          bt!.draw.unshift(bt!.discard.pop() as CardInst);
+        }
+      },
+      status: (k: StatusKey, v: number) => addStatus('self', k, v),
+      statusTo: (idx: number, k: StatusKey, v: number) => {
+        const f = bt!.foes[idx < 0 ? bt!.target : idx];
+        if (f && f.alive) addStatus('foe', k, v, f);
+      },
+      statusAll: (k: StatusKey, v: number) => {
+        bt!.foes.forEach((f) => {
+          if (f.alive) addStatus('foe', k, v, f);
+        });
+      },
+      foeStatus: (idx: number, k: StatusKey) => bt!.foes[idx]?.st[k] || 0,
+      energy: (n: number) => {
+        bt!.energy += n;
+      },
+      say: (s: string) => say(s),
+    };
+
+    d.play(ctx);
+
+    bt.hand.splice(i, 1);
+    if (d.exhaust || d.burn) bt.gone.push(c);
+    else bt.discard.push(c);
+
+    bt.played.all += 1;
+    bt.played[d.type] = (bt.played[d.type] || 0) + 1;
+
+    const wet = bt.st.润 || 0;
+    if (wet > 0) healPlayer(wet);
+
+    checkEnd();
+    renderSide();
+    if (bt.over) {
+      if (bt.foes.every((f) => !f.alive)) winBattle();
+      else finishRun(false);
+      return;
+    }
+    renderBattle();
+  }
+
+  function checkEnd() {
+    if (!bt || bt.over) return;
+    if (bt.foes.every((f) => !f.alive)) {
+      bt.over = true;
+      return;
+    }
+    if (run && run.hp <= 0) bt.over = true;
+  }
+
+  /* ---------- 结束回合 ---------- */
+  function endTurn() {
+    if (!bt || bt.over) return;
+
+    const iron = relicSum('blockToDamage');
+    if (iron > 0 && bt.block > 0) {
+      const live = bt.foes.map((f, k) => (f.alive ? k : -1)).filter((k) => k >= 0);
+      if (live.length) {
+        const dmg = Math.floor((bt.block * iron) / 100);
+        if (dmg > 0) {
+          say(`铁籤：格挡反弹 ${dmg} 点。`);
+          hitFoe(pick(live, bRng), dmg, false);
+        }
+      }
+    }
+
+    while (bt.hand.length) bt.discard.push(bt.hand.pop() as CardInst);
+
+    const rng = rngFrom(`${run?.seed}:e:${run?.floor}:${run?.cur}:${bt.turn}`);
+    for (const f of bt.foes) {
+      if (!f.alive) continue;
+      const it: Intent = f.intent;
+      if (it.block) f.block += it.block;
+      if (it.self) addStatus('foe', it.self[0], it.self[1], f);
+      if (it.foe) addStatus('self', it.foe[0], it.foe[1]);
+      if (it.drain && bt) bt.energyMax = Math.max(0, bt.energyMax - it.drain);
+      if (it.value > 0 && it.times > 0) {
+        for (let t = 0; t < it.times; t++) {
+          const dmg = foeDamage(it.value, f);
+          takeHit(dmg, f.name, it.note);
+          if (run && run.hp <= 0) break;
+        }
+      }
+      if (run && run.hp <= 0) break;
+    }
+
+    for (const k of TEMP_STATUS) {
+      if (bt.st[k]) bt.st[k] = Math.max(0, (bt.st[k] || 0) - 1);
+      for (const f of bt.foes) if (f.st[k]) f.st[k] = Math.max(0, (f.st[k] || 0) - 1);
+    }
+
+    if (run && run.hp <= 0) {
+      bt.over = true;
+      finishRun(false);
+      return;
+    }
+
+    if (bt.foes.every((f) => !f.alive)) {
+      bt.over = true;
+      winBattle();
+      return;
+    }
+
+    bt.foes.forEach((f) => {
+      if (f.alive) rollIntent(f, rng, bt!.turn);
+    });
+    startTurn(false);
+  }
+
+  function takeHit(dmg: number, from: string, note: string) {
+    if (!bt || !run) return;
+    let d = dmg;
+    if (relicFlag('firstHitHalf') && !bt.tookHit) d = Math.floor(d / 2);
+    bt.tookHit = true;
+    if (bt.block > 0) {
+      const a = Math.min(bt.block, d);
+      bt.block -= a;
+      d -= a;
+    }
+    run.hp = Math.max(0, run.hp - d);
+    say(`${from} ${note}：你受到 ${d} 点伤害。`);
+  }
+
+  function winBattle() {
+    if (!bt || !run) return;
+    const kind = bt.kind;
+    let heal = relicSum('winHeal');
+    if (!bt.tookHit) heal += relicSum('noHitHeal');
+    if (heal) healPlayer(heal);
+    run.cleared += 1;
+
+    const gold = 12 + Math.floor(bRng() * 12) + (kind === '精' ? 22 : 0);
+    run.gold += gold;
+    say(`胜。得 ${gold} 签金。`);
+    renderSide();
+
+    if (kind === '首') {
+      finishRun(true);
+      return;
+    }
+    showReward(kind === '精');
+  }
+
+  /* ============================================================
+     战斗渲染
+     ============================================================ */
+  function intentText(it: Intent): string {
+    if (it.kind === '守') return `守 ${it.block ?? 0}`;
+    if (it.kind === '攻') return `攻 ${it.value}${it.times > 1 ? '×' + it.times : ''}`;
+    if (it.kind === '术') return it.note;
+    return it.note || '—';
+  }
+
+  function stChips(st: Partial<Record<StatusKey, number>>) {
+    return Object.entries(st)
+      .filter(([, v]) => (v as number) > 0)
+      .map(
+        ([k, v]) =>
+          `<span class="om-st${BAD_STATUS.includes(k as StatusKey) ? ' om-st--bad' : ''}">${STATUS_LABEL[k as StatusKey]}${v}</span>`,
+      )
+      .join('');
+  }
+
+  function renderBattle() {
+    if (!bt || !run) return;
+
+    const foes = $('omFoes');
+    if (foes) {
+      foes.innerHTML = bt.foes
+        .map((f, i) => {
+          const pct = Math.max(0, (f.hp / f.hpMax) * 100);
+          const cls = [
+            'om-foe',
+            i === bt!.target && f.alive ? 'om-foe--target' : '',
+            f.alive ? '' : 'om-foe--dead',
+          ]
+            .filter(Boolean)
+            .join(' ');
+          return `<button class="${cls}" data-foe="${i}" type="button" style="color:${f.hue}">
+            <span class="om-foe-intent">${f.alive ? intentText(f.intent) : '散'}</span>
+            <span class="om-foe-glyph">${f.glyph}</span>
+            <span class="om-foe-name">${f.name}${f.block > 0 ? ` · 挡 ${f.block}` : ''}</span>
+            <span class="om-bar-hp"><i style="width:${pct}%"></i></span>
+            <span class="om-hp-num">${f.hp} / ${f.hpMax}</span>
+          </button>`;
+        })
+        .join('');
+      foes.querySelectorAll('[data-foe]').forEach((el) => {
+        el.addEventListener('click', () => {
+          if (!bt) return;
+          const i = Number((el as HTMLElement).getAttribute('data-foe'));
+          if (bt.foes[i]?.alive) {
+            bt.target = i;
+            renderBattle();
+          }
+        });
+      });
+    }
+
+    const me = $('omMe');
+    if (me) {
+      me.innerHTML = `
+        <div class="om-me-row"><span>生命</span><b>${run.hp} / ${run.hpMax}</b></div>
+        <div class="om-me-row"><span>格挡</span><b>${bt.block}</b></div>
+        <div class="om-sts">${stChips(bt.st) || '<span class="om-relic-empty">无状态</span>'}</div>`;
+    }
+
+    const lg = $('omLog');
+    if (lg) {
+      lg.innerHTML = bt.log
+        .slice(-8)
+        .map((s) => `<p>${s}</p>`)
+        .join('');
+      lg.scrollTop = lg.scrollHeight;
+    }
+
+    const hand = $('omHand');
+    if (hand) {
+      // 按张数收紧卡宽：8 张以内保持原尺寸，再多就等比缩，始终一排放下
+      const n = bt.hand.length;
+      const gap = 6;
+      const budget = 848;
+      const w = n <= 7 ? 104 : Math.max(60, Math.floor((budget - (n - 1) * gap) / n));
+      hand.style.setProperty('--om-card-w', `${w}px`);
+      hand.innerHTML = bt.hand.map((c, i) => cardHtml(c, i)).join('');
+      hand.querySelectorAll('[data-hand]').forEach((el) => {
+        el.addEventListener('click', () => {
+          cast(Number((el as HTMLElement).getAttribute('data-hand')));
+        });
+      });
+    }
+
+    const en = $('omEnergy');
+    if (en) en.innerHTML = `${bt.energy}<span> / ${bt.energyMax} 卦力</span>`;
+    const pl = $('omPiles');
+    if (pl)
+      pl.innerHTML = `<span class="om-pile">筒 ${bt.draw.length}</span><span class="om-pile">弃 ${bt.discard.length}</span><span class="om-pile">耗 ${bt.gone.length}</span>`;
+
+    const end = $<HTMLButtonElement>('omEnd');
+    if (end) end.textContent = bt.over ? '继续' : `结束回合 · 第 ${bt.turn} 轮`;
+  }
+
+  function cardHtml(c: CardInst, i: number, off?: boolean): string {
+    const d = CARD_MAP[c.id];
+    if (!d) return '';
+    const dis = off === undefined ? !playable(c) : off;
+    const tag = d.exhaust ? '耗' : d.burn ? '焚' : '';
+    return `<button class="om-card om-card--${d.type}${dis ? ' om-card--off' : ''}" data-hand="${i}" type="button">
+      <span class="om-cost">${costOf(c)}</span>
+      <span class="om-ctype">${d.type}</span>
+      <b class="om-cname">${d.name}${c.up ? '+' : ''}</b>
+      <span class="om-cen">${d.en}</span>
+      <span class="om-ctext">${renderText(d, c.up)}</span>
+      ${tag ? `<span class="om-ctag">${tag}</span>` : ''}
+    </button>`;
+  }
+
+  /* ============================================================
+     奖励 / 事件 / 卜肆 / 焚签 / 牌组
+     ============================================================ */
+  function rollCardId(r: () => number, elite: boolean): string {
+    const x = r();
+    const tier = elite
+      ? x < 0.42
+        ? POOL_COMMON
+        : x < 0.9
+          ? POOL_RARE
+          : POOL_SECRET
+      : x < 0.68
+        ? POOL_COMMON
+        : x < 0.97
+          ? POOL_RARE
+          : POOL_SECRET;
+    return pick(tier, r);
+  }
+
+  function showReward(elite: boolean) {
+    if (!run) return;
+    const r = rngFrom(`${run.seed}:r:${run.floor}:${run.cur}:1`);
+    const ids = new Set<string>();
+    while (ids.size < 3) ids.add(rollCardId(r, elite));
+    const list = [...ids];
+
+    const relic = elite ? relicPool(run.relics, r) : null;
+    if (relic) {
+      gainRelic(relic.id);
+      renderSide();
+    }
+
+    scene(
+      'REWARD · 抽签',
+      elite ? '精英已散' : '这一层清了',
+      relic
+        ? `拾得卜器 <b>${relic.name}</b>（${relic.glyph}）——${relic.text}<br />再挑一张签带走。`
+        : '从三张签里挑一张带走，也可以一张都不要——牌组越薄越好抽。',
+      `<div class="om-pick">${list.map((id) => cardHtml(mk(id), -1, false)).join('')}</div>
+       <div class="om-sc-foot"><button class="om-opt" data-act="skip" type="button"><b>都不要</b><span>保持牌组精简</span></button></div>`,
+    );
+
+    bindCards(list, (id) => {
+      run!.deck.push(mk(id));
+      renderSide();
+      afterNode();
+    });
+    bindAct('skip', () => afterNode());
+  }
+
+  function showEvent() {
+    if (!run) return;
+    const r = rngFrom(`${run.seed}:v:${run.floor}:${run.cur}`);
+    const e = pick(EVENTS, r);
+    scene(
+      e.kicker,
+      e.title,
+      e.body,
+      `<div class="om-sc-opts">${e.options
+        .map(
+          (o, i) =>
+            `<button class="om-opt" data-opt="${i}" type="button"><span><b>${o.label}</b><span>${o.hint}</span></span></button>`,
+        )
+        .join('')}</div>`,
+    );
+
+    const box = $('omSceneView');
+    box?.querySelectorAll('[data-opt]').forEach((el) => {
+      el.addEventListener('click', () => {
+        if (!lockScene()) return;
+        const i = Number((el as HTMLElement).getAttribute('data-opt'));
+        runApi(e, r)(e.options[i]);
+      });
+    });
+  }
+
+  function runApi(e: EventDef, r: () => number) {
+    return (o: EventDef['options'][number]) => {
+      if (!run) return;
+      const api = {
+        heal: (n: number) => healPlayer(n),
+        hurt: (n: number) => hurtPlayer(n),
+        maxHp: (n: number) => {
+          run!.hpBase += n;
+          run!.hp += n;
+          recomputeMaxHp();
+        },
+        gold: (n: number) => {
+          run!.gold = Math.max(0, run!.gold + n);
+        },
+        addCard: (id: string) => run!.deck.push(mk(id)),
+        removeCard: (id: string) => {
+          const idx = id ? run!.deck.findIndex((c) => c.id === id) : Math.floor(r() * run!.deck.length);
+          if (idx >= 0) run!.deck.splice(idx, 1);
+        },
+        upgradeCard: (id: string) => {
+          const c = id ? run!.deck.find((x) => x.id === id) : pick(run!.deck.filter((x) => !x.up && CARD_MAP[x.id]?.upVals), r);
+          if (c) c.up = true;
+        },
+        addRelic: (id: string) => {
+          const got = id ? RELIC_MAP[id] : relicPool(run!.relics, r);
+          if (got) gainRelic(got.id);
+        },
+        rng: r,
+        say: (s: string) => sceneAppend(s),
+        hasRelic: (id: string) => run!.relics.includes(id),
+      };
+      o.run(api);
+      renderSide();
+      if (run.hp <= 0) {
+        finishRun(false);
+        return;
+      }
+      sceneNote(`${e.title}：${o.label}。`);
+    };
+  }
+
+  function sceneAppend(s: string) {
+    const box = $('omSceneView');
+    if (!box) return;
+    const p = document.createElement('p');
+    p.className = 'om-sc-body';
+    p.innerHTML = `<b>${s}</b>`;
+    box.appendChild(p);
+  }
+
+  function sceneNote(s: string) {
+    sceneAppend(s);
+    window.setTimeout(afterNode, 900);
+  }
+
+  function shopPrice(base: number) {
+    return Math.max(1, Math.round(base * (1 - relicSum('shopDiscount') / 100)));
+  }
+
+  function showShop() {
+    if (!run) return;
+    const r = rngFrom(`${run.seed}:s:${run.floor}:${run.cur}`);
+    const cards = new Set<string>();
+    while (cards.size < 4) cards.add(rollCardId(r, false));
+    const cardList = [...cards];
+    const cardPrices = cardList.map((id) =>
+      shopPrice(CARD_MAP[id]?.rarity === '秘' ? 135 : CARD_MAP[id]?.rarity === '罕' ? 85 : 50),
+    );
+
+    const relicList: RelicDef[] = [];
+    const relicPrices: number[] = [];
+    const allowCurse = r() < 0.35;
+    for (let i = 0; i < 2; i++) {
+      const pool = RELICS.filter((x) => !run!.relics.includes(x.id) && (allowCurse || x.rarity !== '咎'));
+      if (!pool.length) break;
+      const x = r();
+      const want = allowCurse && i === 1 && x < 0.5 ? '咎' : x < 0.2 ? '秘' : x < 0.62 ? '罕' : '常';
+      const tier = pool.filter((p) => p.rarity === want);
+      const got = pick(tier.length ? tier : pool, r);
+      relicList.push(got);
+      relicPrices.push(shopPrice(got.rarity === '咎' ? 60 : got.rarity === '秘' ? 240 : got.rarity === '罕' ? 165 : 110));
+    }
+    const removePrice = shopPrice(75);
+
+    const html = `
+      <div class="om-sc-kicker">SHOP · 卜肆</div>
+      <p class="om-sc-body">柜台后面没人。签码压着一张纸：「自己算，钱放桌上。」</p>
+      <div class="om-sc-kicker" style="letter-spacing:.18em">签</div>
+      <div class="om-pick">${cardList
+        .map(
+          (id, i) =>
+            `<div>${cardHtml(mk(id), -1, false)}<button class="om-mini-btn" data-buy="${i}" type="button">${cardPrices[i]} 金</button></div>`,
+        )
+        .join('')}</div>
+      <div class="om-sc-kicker" style="letter-spacing:.18em">卜器</div>
+      <div class="om-sc-opts">
+        ${relicList
+          .map(
+            (rl, i) =>
+              `<button class="om-opt${run!.gold < relicPrices[i] ? ' om-opt--off' : ''}" data-relic="${i}" type="button"><span><b>${rl.glyph} ${rl.name}</b><span>${rl.text}</span></span><span>${relicPrices[i]} 金</span></button>`,
+          )
+          .join('')}
+        <button class="om-opt${run!.gold < removePrice ? ' om-opt--off' : ''}" data-act="burn" type="button">
+          <span><b>焚一张签</b><span>从牌组里永久去掉一张</span></span><span>${removePrice} 金</span>
+        </button>
+      </div>
+      <div class="om-sc-foot"><button class="om-opt" data-act="leave" type="button"><b>离开卜肆</b><span>继续上路</span></button></div>`;
+
+    sceneHtml(html);
+
+    const box = $('omSceneView');
+    box?.querySelectorAll('[data-buy]').forEach((el) => {
+      el.addEventListener('click', () => {
+        const i = Number((el as HTMLElement).getAttribute('data-buy'));
+        if (!run || run.gold < cardPrices[i]) return;
+        run.gold -= cardPrices[i];
+        run.deck.push(mk(cardList[i]));
+        renderSide();
+        showShop();
+      });
+    });
+    box?.querySelectorAll('[data-relic]').forEach((el) => {
+      el.addEventListener('click', () => {
+        const i = Number((el as HTMLElement).getAttribute('data-relic'));
+        if (!run || run.gold < relicPrices[i]) return;
+        run.gold -= relicPrices[i];
+        gainRelic(relicList[i].id);
+        renderSide();
+        showShop();
+      });
+    });
+    bindAct('burn', () => {
+      if (!run || run.gold < removePrice) return;
+      run.gold -= removePrice;
+      showBurnPicker();
+    });
+    bindAct('leave', () => afterNode());
+  }
+
+  function showBurnPicker() {
+    if (!run) return;
+    scene(
+      'SHOP · 焚签',
+      `烧掉一张（还剩 ${run.deck.length} 张）`,
+      '烧掉的签这一程不会再出现。牌组越薄，想要的签抽得越快。',
+      `<div class="om-pick om-pick--grid">${run.deck
+        .map(
+          (c, i) =>
+            `<button class="om-opt" data-deck="${i}" type="button"><span><b>${CARD_MAP[c.id]?.name ?? c.id}${c.up ? '+' : ''}</b><span>${CARD_MAP[c.id]?.type ?? ''} · ${CARD_MAP[c.id]?.cost ?? 0} 卦力</span></span></button>`,
+        )
+        .join('')}</div>`,
+    );
+    const box = $('omSceneView');
+    box?.querySelectorAll('[data-deck]').forEach((el) => {
+      el.addEventListener('click', () => {
+        if (!lockScene()) return;
+        const i = Number((el as HTMLElement).getAttribute('data-deck'));
+        run?.deck.splice(i, 1);
+        renderSide();
+        afterNode();
+      });
+    });
+  }
+
+  function showRest() {
+    if (!run) return;
+    const amount = Math.max(1, Math.round(run.hpMax * 0.3));
+    const opts: { k: string; b: string; s: string }[] = [
+      { k: 'sleep', b: `歇一炷香`, s: `回复 ${amount} 点生命` },
+      { k: 'forge', b: '研读', s: '升级牌组中的一张签' },
+    ];
+    scene(
+      'REST · 焚签',
+      '一堆快烧尽的签',
+      '火还留着一点。你可以就着它睡一觉，也可以把一张签烤干、让它变强一点。',
+      `<div class="om-sc-opts">${opts
+        .map(
+          (o) =>
+            `<button class="om-opt" data-act="${o.k}" type="button"><span><b>${o.b}</b><span>${o.s}</span></span></button>`,
+        )
+        .join('')}</div>`,
+    );
+    bindAct('sleep', () => {
+      healPlayer(amount);
+      renderSide();
+      afterNode();
+    });
+    bindAct('forge', () => showForgePicker());
+  }
+
+  function showForgePicker() {
+    if (!run) return;
+    const can = run.deck.filter((c) => !c.up && CARD_MAP[c.id]?.upVals);
+    if (!can.length) {
+      sceneNote('没有可以再研读的签了。');
+      return;
+    }
+    scene(
+      'REST · 研读',
+      '挑一张烤干',
+      '升级后的签，数值更高，有些连卦力都会变便宜。',
+      `<div class="om-pick om-pick--grid">${can
+        .map((c) => {
+          const d = CARD_MAP[c.id];
+          return `<button class="om-opt" data-up="${c.uid}" type="button"><span><b>${d.name} → ${d.name}+</b><span>${renderText(d, true)}</span></span></button>`;
+        })
+        .join('')}</div>`,
+    );
+    const box = $('omSceneView');
+    box?.querySelectorAll('[data-up]').forEach((el) => {
+      el.addEventListener('click', () => {
+        if (!lockScene()) return;
+        const uid = Number((el as HTMLElement).getAttribute('data-up'));
+        const c = run?.deck.find((x) => x.uid === uid);
+        if (c) c.up = true;
+        renderSide();
+        afterNode();
+      });
+    });
+  }
+
+  function showDeck() {
+    if (!run) return;
+    const sorted = run.deck.slice().sort((a, b) => {
+      const A = CARD_MAP[a.id];
+      const B = CARD_MAP[b.id];
+      return A.type === B.type ? A.cost - B.cost : A.type.localeCompare(B.type);
+    });
+    scene(
+      'DECK · 签筒',
+      `牌组 ${run.deck.length} 张`,
+      '这就是你这一程全部的家当。',
+      `<div class="om-pick om-pick--grid">${sorted
+        .map((c) => {
+          const d = CARD_MAP[c.id];
+          return `<div class="om-deck-card"><b>${d.name}${c.up ? '+' : ''}</b><i>${d.type} · ${c.up && d.upCost != null ? d.upCost : d.cost} 卦力</i><span>${renderText(d, c.up)}</span></div>`;
+        })
+        .join('')}</div>
+       <div class="om-sc-foot"><button class="om-opt" data-act="back" type="button"><b>收起</b><span>回到刚才的地方</span></button></div>`,
+    );
+    bindAct('back', () => {
+      if (bt && !bt.over) {
+        show('battle');
+        renderBattle();
+      } else {
+        renderMap();
+        show('map');
+      }
+    });
+  }
+
+  /* ---------- 场景助手 ---------- */
+  function scene(kicker: string, title: string, body: string, inner: string) {
+    sceneHtml(
+      `<div class="om-sc-kicker">${kicker}</div><h2 class="om-sc-title">${title}</h2><p class="om-sc-body">${body}</p>${inner}`,
+    );
+  }
+
+  function sceneHtml(html: string) {
+    const box = $('omSceneView');
+    if (!box) return;
+    sceneLocked = false;
+    box.innerHTML = html;
+    show('scene');
+  }
+
+  function lockScene(): boolean {
+    if (sceneLocked) return false;
+    sceneLocked = true;
+    return true;
+  }
+
+  function bindAct(act: string, fn: () => void) {
+    const box = $('omSceneView');
+    box?.querySelectorAll(`[data-act="${act}"]`).forEach((el) => {
+      el.addEventListener('click', () => {
+        if (lockScene()) fn();
+      });
+    });
+  }
+
+  function bindCards(list: string[], fn: (id: string) => void) {
+    const box = $('omSceneView');
+    box?.querySelectorAll('.om-pick [data-hand]').forEach((el, i) => {
+      el.addEventListener('click', () => {
+        if (lockScene()) fn(list[i]);
+      });
+    });
+  }
+
+  /* ============================================================
+     节点结束 / 结算
+     ============================================================ */
+  function afterNode() {
+    if (!run) return;
+    bt = null;
+    if (run.hp <= 0) {
+      finishRun(false);
+      return;
+    }
+    renderMap();
+    renderSide();
+    show('map');
+  }
+
+  async function finishRun(won: boolean) {
+    if (!run) return;
+    const floor = run.floor + 1;
+    const score = floor * 100 + run.kills * 10 + run.cleared * 5 + (won ? 1000 : 0);
+
+    const m = await store.get<typeof meta>(META_PATH, { wins: 0, runs: 0, streak: 0, bestStreak: 0 });
+    meta = { wins: 0, runs: 0, streak: 0, bestStreak: 0, ...(m || {}) };
+    meta.runs += 1;
+    if (won) {
+      meta.wins += 1;
+      meta.streak += 1;
+      meta.bestStreak = Math.max(meta.bestStreak, meta.streak);
+    } else {
+      meta.streak = 0;
+    }
+    void store.set(META_PATH, meta);
+    void recordRun('omen', score, { level: floor });
+
+    const old = run;
+    overlay(
+      won ? 'OMEN · 终' : 'OMEN · 断',
+      won ? '签底见空' : '这一程到此为止',
+      won
+        ? `你走完了十五层，把最后一支签抽了出来。<br />击破 <b>${old.kills}</b> · 清理 <b>${old.cleared}</b> 处 · 连胜 <b>${meta.streak}</b><br />牌组 <b>${old.deck.length}</b> 张 · 卜器 <b>${old.relics.length}</b> 件`
+        : `倒在第 <b>${floor}</b> 层。<br />击破 <b>${old.kills}</b> · 清理 <b>${old.cleared}</b> 处 · 得分 <b>${score}</b><br />牌组 <b>${old.deck.length}</b> 张 · 卜器 <b>${old.relics.length}</b> 件`,
+      '再来一程',
+      '每日种子',
+    );
+    run = null;
+    bt = null;
+  }
+
+  /* ============================================================
+     装配
+     ============================================================ */
+  function boot() {
+    const root = $('omenRoot');
+    if (!root || root.dataset.booted) return;
+    root.dataset.booted = '1';
+
+    void readStat('omen').then(async (rec) => {
+      const m = await store.get<typeof meta>(META_PATH, { wins: 0, runs: 0, streak: 0, bestStreak: 0 });
+      meta = { wins: 0, runs: 0, streak: 0, bestStreak: 0, ...(m || {}) };
+      const tip = $('omTip');
+      if (tip && (rec.plays || 0) > 0) {
+        tip.innerHTML = `已走 <strong>${rec.plays}</strong> 程 · 最深 <strong>第 ${rec.level || 1} 层</strong> · 通关 <strong>${meta.wins}</strong> 次。当前连胜 <strong>${meta.streak}</strong>。`;
+      }
+      overlay(
+        'OMEN · 抽签',
+        '签',
+        `十五层，每层 2–4 条路。牌组 10 张，卦力 3 点。<br />点敌人选目标，<b>点签打出</b>，<b>空格</b> 结束回合。<br />已走 <b>${rec.plays || 0}</b> 程 · 通关 <b>${meta.wins}</b> 次`,
+        '起一卦',
+        '每日种子',
+      );
+    });
+
+    $<HTMLButtonElement>('omBtn')?.addEventListener('click', () => newRun(false));
+    $<HTMLButtonElement>('omBtn2')?.addEventListener('click', () => newRun(true));
+    $<HTMLButtonElement>('omEnd')?.addEventListener('click', () => {
+      if (bt && !bt.over) endTurn();
+      else if (bt && bt.over) afterNode();
+    });
+    $('omDeckBtn')?.addEventListener('click', () => {
+      if (run) showDeck();
+    });
+
+    keyHandler = (e: KeyboardEvent) => {
+      const k = e.key;
+      // 场景必须选完才能走，Esc 不放行
+      if (k === 'Escape') return;
+      if (view === 'battle' && bt && !bt.over) {
+        if (k >= '1' && k <= '9') {
+          cast(Number(k) - 1);
+          e.preventDefault();
+        } else if (k === ' ' || k === 'Enter' || k.toLowerCase() === 'e') {
+          endTurn();
+          e.preventDefault();
+        }
+      } else if (view === 'title') {
+        if (k === ' ' || k === 'Enter') {
+          newRun(false);
+          e.preventDefault();
+        }
+      }
+      if (k.toLowerCase() === 'd' && run && view !== 'scene') {
+        showDeck();
+        e.preventDefault();
+      }
+    };
+    window.addEventListener('keydown', keyHandler);
+  }
+
+  function destroy() {
+    if (keyHandler) window.removeEventListener('keydown', keyHandler);
+    keyHandler = null;
+  }
+
+  document.addEventListener('astro:page-load', boot);
+  document.addEventListener('astro:before-swap', destroy);
+  boot();
+</script>

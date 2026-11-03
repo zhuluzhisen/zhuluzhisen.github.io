@@ -1,0 +1,1191 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import PlayerBar from '../../components/PlayerBar.astro';
+import '../../styles/games.css';
+---
+
+<BaseLayout title="喵星防线" description="喵星防线 · 猫猫塔防：五种猫猫、两条升级路线，守住三十波霓虹气球">
+  <div class="gx-page container-x" id="meowRoot">
+    <a class="gx-back" href="/games">
+      <i class="ri-arrow-left-line" aria-hidden="true"></i>
+      游戏厅
+    </a>
+
+    <header class="gx-head">
+      <div class="gx-head-row">
+        <div>
+          <p class="gx-kicker">MEOW TD</p>
+          <h1 class="gx-title">喵星防线</h1>
+        </div>
+        <PlayerBar />
+      </div>
+      <p class="gx-sub">
+        霓虹气球顺着小路去偷鱼干。放下猫猫、升级它们，守住三十波——气球一层套一层，戳破外壳里面还有。
+      </p>
+    </header>
+
+    <div class="gx-stage">
+      <div class="mw-col">
+        <div class="gx-screen mw-screen">
+          <canvas id="meowCanvas" width="800" height="520"></canvas>
+          <div class="gx-overlay" id="meowOverlay">
+            <div class="gx-overlay-card">
+              <p class="gx-overlay-kicker" id="meowKicker">LOADING</p>
+              <h2 class="gx-overlay-title" id="meowTitle">喵星防线</h2>
+              <p class="gx-overlay-desc" id="meowDesc">正在准备画面…</p>
+              <div class="mw-overlay-btns">
+                <button class="gx-btn" id="meowBtn" type="button" disabled>加载中</button>
+                <button class="gx-btn gx-btn--ghost" id="meowBtn2" type="button" hidden>再来一局</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="mw-bar">
+          <button class="gx-btn mw-next" id="meowNext" type="button">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.5v15l12-7.5z" fill="currentColor"></path></svg>
+            <span id="meowNextText">开始第 1 波</span>
+          </button>
+          <button class="gx-btn gx-btn--ghost mw-small" id="meowSpeed" type="button" title="加速（F）">
+            <svg viewBox="0 0 24 24" aria-hidden="true"
+              ><path d="M3 6v12l8.5-6zM12.5 6v12l8.5-6z" fill="currentColor"></path></svg
+            >
+            <span id="meowSpeedText">1×</span>
+          </button>
+          <button class="gx-btn gx-btn--ghost mw-small" id="meowAuto" type="button" title="清完一波自动开始下一波（A）">
+            <svg viewBox="0 0 24 24" aria-hidden="true"
+              ><path
+                d="M17 3l4 4-4 4M21 7H8a5 5 0 0 0-5 5M7 21l-4-4 4-4M3 17h13a5 5 0 0 0 5-5"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"></path></svg
+            >
+            <span id="meowAutoText">自动 · 关</span>
+          </button>
+          <button class="gx-btn gx-btn--ghost mw-small" id="meowPause" type="button" title="暂停（P）">
+            <svg viewBox="0 0 24 24" aria-hidden="true"
+              ><path d="M7 5h3.5v14H7zM13.5 5H17v14h-3.5z" fill="currentColor"></path></svg
+            >
+            暂停
+          </button>
+          <button class="gx-btn gx-btn--ghost mw-small" id="meowQuality" type="button" title="画质：自动会在掉帧时切到流畅档">
+            <svg viewBox="0 0 24 24" aria-hidden="true"
+              ><path
+                d="M12 2l1.8 5.4L19 9l-5.2 1.6L12 16l-1.8-5.4L5 9l5.2-1.6zM19 15l.9 2.1L22 18l-2.1.9L19 21l-.9-2.1L16 18l2.1-.9z"
+                fill="currentColor"></path></svg
+            >
+            <span id="meowQualityText">画质 · 自动</span>
+          </button>
+        </div>
+      </div>
+
+      <aside class="gx-side">
+        <div class="gx-panel">
+          <p class="gx-panel-label">STATUS · 状态</p>
+          <div class="mw-stats">
+            <div class="mw-stat mw-stat--lives" id="meowLivesBox">
+              <span>鱼干</span>
+              <b id="meowLives">100</b>
+            </div>
+            <div class="mw-stat mw-stat--money" id="meowMoneyBox">
+              <span>金币</span>
+              <b id="meowMoney">0</b>
+            </div>
+            <div class="mw-stat">
+              <span>波次</span>
+              <b id="meowWave">0 / 30</b>
+            </div>
+            <div class="mw-stat">
+              <span>戳破</span>
+              <b id="meowPops">0</b>
+            </div>
+          </div>
+          <div class="mw-progress" aria-hidden="true"><i id="meowProg"></i></div>
+          <p class="gx-score-sub">最高 <span id="meowBest">0</span> 个</p>
+        </div>
+
+        <div class="gx-panel">
+          <p class="gx-panel-label">SHOP · 猫猫 <span>1–5</span></p>
+          <div class="mw-shop" id="meowShop"></div>
+        </div>
+
+        <div class="gx-panel" id="meowInfo"></div>
+
+        <div class="gx-panel">
+          <p class="gx-panel-label">CONTROLS · 操作</p>
+          <div class="gx-keys">
+            <span class="gx-key">1–5 选猫</span>
+            <span class="gx-key">空格 下一波</span>
+            <span class="gx-key">Z / X 升级</span>
+            <span class="gx-key">T 目标</span>
+            <span class="gx-key">Del 卖出</span>
+            <span class="gx-key">F 加速</span>
+            <span class="gx-key">Esc 取消</span>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </div>
+</BaseLayout>
+
+<style>
+  .mw-col {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    min-width: 0;
+  }
+
+  .mw-screen {
+    max-width: 800px;
+    aspect-ratio: 800 / 520;
+    box-shadow:
+      0 50px 110px -60px rgba(34, 211, 238, 0.75),
+      0 0 0 1px rgba(255, 255, 255, 0.04),
+      inset 0 1px 0 rgba(255, 255, 255, 0.07);
+  }
+
+  .mw-col canvas {
+    cursor: crosshair;
+    width: 100%;
+    height: 100%;
+  }
+
+  .mw-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    align-items: center;
+  }
+
+  .mw-bar svg {
+    width: 15px;
+    height: 15px;
+    flex: none;
+  }
+
+  .mw-next {
+    min-width: 160px;
+  }
+
+  .mw-next[disabled] {
+    opacity: 0.45;
+    cursor: default;
+    transform: none;
+    filter: saturate(0.4);
+  }
+
+  .mw-small {
+    min-width: 0;
+    padding: 0.55rem 0.9rem;
+    font-size: 0.78rem;
+  }
+
+  .mw-small.is-on {
+    color: var(--color-cyan);
+    border-color: color-mix(in oklab, var(--color-cyan) 55%, transparent);
+    box-shadow: 0 0 18px -6px rgba(34, 211, 238, 0.8);
+  }
+
+  .mw-overlay-btns {
+    display: flex;
+    gap: 0.6rem;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .mw-overlay-btns .gx-btn[disabled] {
+    opacity: 0.55;
+    cursor: progress;
+  }
+
+  .mw-stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.45rem 0.55rem;
+  }
+
+  .mw-stat {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+    padding: 0.45rem 0.6rem;
+    border-radius: 11px;
+    background: linear-gradient(160deg, color-mix(in oklab, #ffffff 6%, transparent), color-mix(in oklab, #ffffff 2%, transparent));
+    border: 1px solid color-mix(in oklab, #ffffff 6%, transparent);
+    transition:
+      background 0.3s ease,
+      transform 0.2s ease;
+  }
+
+  .mw-stat span {
+    font-size: 0.64rem;
+    color: var(--color-fog);
+    letter-spacing: 0.08em;
+  }
+
+  .mw-stat b {
+    font-family: var(--font-mono);
+    font-size: 1.08rem;
+    color: #fff;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .mw-stat--money b {
+    color: #fde68a;
+    text-shadow: 0 0 14px rgba(251, 191, 36, 0.45);
+  }
+
+  .mw-stat--money.is-gain b {
+    text-shadow: 0 0 18px rgba(251, 191, 36, 0.9);
+  }
+
+  .mw-stat--lives b {
+    color: #fda4af;
+  }
+
+  .mw-stat.is-hurt {
+    background: rgba(239, 68, 68, 0.3);
+    animation: mw-shake 0.35s ease;
+  }
+
+  @keyframes mw-shake {
+    25% {
+      transform: translateX(-3px);
+    }
+    50% {
+      transform: translateX(3px);
+    }
+    75% {
+      transform: translateX(-2px);
+    }
+  }
+
+  .mw-progress {
+    height: 4px;
+    margin-top: 0.6rem;
+    border-radius: 999px;
+    background: color-mix(in oklab, #ffffff 7%, transparent);
+    overflow: hidden;
+  }
+
+  .mw-progress i {
+    display: block;
+    height: 100%;
+    width: 0;
+    border-radius: inherit;
+    background: linear-gradient(90deg, var(--color-cyan), var(--color-violet));
+    box-shadow: 0 0 10px rgba(34, 211, 238, 0.8);
+    transition: width 0.25s linear;
+  }
+
+  .mw-shop {
+    display: grid;
+    gap: 0.35rem;
+  }
+
+  .mw-shop :global(.mw-tower) {
+    position: relative;
+    display: grid;
+    grid-template-columns: 38px 1fr auto;
+    align-items: center;
+    gap: 0.55rem;
+    padding: 0.3rem 0.6rem 0.3rem 0.35rem;
+    border-radius: 12px;
+    border: 1px solid color-mix(in oklab, #ffffff 8%, transparent);
+    background: linear-gradient(120deg, color-mix(in oklab, var(--c) 12%, transparent), color-mix(in oklab, #ffffff 2%, transparent) 60%);
+    color: var(--color-mist);
+    font: inherit;
+    font-size: 0.8rem;
+    text-align: left;
+    cursor: pointer;
+    transition:
+      border-color 0.2s ease,
+      transform 0.2s cubic-bezier(0.22, 1, 0.36, 1),
+      box-shadow 0.2s ease,
+      filter 0.2s ease;
+  }
+
+  .mw-shop :global(.mw-tower:hover) {
+    transform: translateX(-2px);
+    border-color: color-mix(in oklab, var(--c) 60%, transparent);
+    box-shadow: 0 8px 22px -14px var(--c);
+  }
+
+  .mw-shop :global(.mw-tower:active) {
+    transform: scale(0.98);
+  }
+
+  .mw-shop :global(.mw-tower.is-on) {
+    border-color: var(--c);
+    box-shadow:
+      0 0 0 1px var(--c),
+      0 0 22px -6px var(--c);
+  }
+
+  .mw-shop :global(.mw-tower.is-poor) {
+    filter: grayscale(0.85);
+    opacity: 0.55;
+  }
+
+  .mw-shop :global(.mw-tower img) {
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+    background: radial-gradient(circle at 50% 70%, color-mix(in oklab, var(--c) 30%, transparent), rgba(4, 6, 13, 0.6) 70%);
+  }
+
+  .mw-shop :global(.mw-tname) {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.25;
+  }
+
+  .mw-shop :global(.mw-tname small) {
+    font-family: var(--font-mono);
+    font-size: 0.6rem;
+    color: var(--color-fog);
+    letter-spacing: 0.08em;
+  }
+
+  .mw-shop :global(.mw-cost),
+  #meowInfo :global(.mw-cost) {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    color: #fbbf24;
+  }
+
+  #meowInfo :global(.mw-info-head) {
+    display: grid;
+    grid-template-columns: 52px 1fr;
+    gap: 0.6rem;
+    align-items: center;
+    margin-bottom: 0.6rem;
+  }
+
+  #meowInfo :global(.mw-info-head img) {
+    width: 52px;
+    height: 52px;
+    border-radius: 12px;
+    background: radial-gradient(circle at 50% 70%, color-mix(in oklab, var(--c) 35%, transparent), rgba(4, 6, 13, 0.65) 72%);
+    border: 1px solid color-mix(in oklab, var(--c) 40%, transparent);
+  }
+
+  #meowInfo :global(.mw-info-title) {
+    margin: 0 0 0.15rem;
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: #fff;
+  }
+
+  #meowInfo :global(.mw-info-sub) {
+    margin: 0;
+    font-size: 0.68rem;
+    line-height: 1.5;
+    color: var(--color-fog);
+    font-family: var(--font-mono);
+  }
+
+  #meowInfo :global(.mw-up) {
+    position: relative;
+    display: block;
+    width: 100%;
+    margin-bottom: 0.4rem;
+    padding: 0.5rem 0.65rem;
+    border-radius: 11px;
+    border: 1px solid color-mix(in oklab, #ffffff 9%, transparent);
+    background: color-mix(in oklab, #ffffff 3%, transparent);
+    color: var(--color-mist);
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+    overflow: hidden;
+    transition:
+      border-color 0.2s ease,
+      box-shadow 0.2s ease,
+      transform 0.15s ease;
+  }
+
+  #meowInfo :global(.mw-up:hover:not([disabled])) {
+    border-color: color-mix(in oklab, var(--c) 65%, transparent);
+    box-shadow: 0 8px 24px -16px var(--c);
+  }
+
+  #meowInfo :global(.mw-up:active:not([disabled])) {
+    transform: scale(0.98);
+  }
+
+  #meowInfo :global(.mw-up[disabled]) {
+    cursor: default;
+    opacity: 0.5;
+  }
+
+  #meowInfo :global(.mw-up.is-bought) {
+    animation: mw-bought 0.55s ease;
+  }
+
+  @keyframes mw-bought {
+    0% {
+      box-shadow: 0 0 0 0 rgba(251, 191, 36, 0.9);
+      background: rgba(251, 191, 36, 0.25);
+    }
+    100% {
+      box-shadow: 0 0 0 14px rgba(251, 191, 36, 0);
+    }
+  }
+
+  #meowInfo :global(.mw-up-head) {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.64rem;
+    color: var(--color-fog);
+    letter-spacing: 0.06em;
+  }
+
+  #meowInfo :global(.mw-tiers) {
+    display: inline-flex;
+    gap: 3px;
+  }
+
+  #meowInfo :global(.mw-tiers i) {
+    width: 14px;
+    height: 4px;
+    border-radius: 2px;
+    background: color-mix(in oklab, #ffffff 12%, transparent);
+  }
+
+  #meowInfo :global(.mw-tiers i.on) {
+    background: var(--c);
+    box-shadow: 0 0 8px var(--c);
+  }
+
+  #meowInfo :global(.mw-up-name) {
+    display: block;
+    margin: 0.2rem 0 0.1rem;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: #fff;
+  }
+
+  #meowInfo :global(.mw-up-desc) {
+    display: block;
+    font-size: 0.7rem;
+    line-height: 1.5;
+    color: var(--color-fog);
+  }
+
+  #meowInfo :global(.mw-row) {
+    display: flex;
+    gap: 0.4rem;
+    margin-top: 0.2rem;
+  }
+
+  #meowInfo :global(.mw-row .gx-btn) {
+    flex: 1;
+    min-width: 0;
+    padding: 0.45rem 0.6rem;
+    font-size: 0.74rem;
+  }
+
+  #meowInfo :global(.mw-sell) {
+    color: #fda4af;
+  }
+
+  :global(:root[data-theme='light']) .mw-stat b,
+  :global(:root[data-theme='light']) #meowInfo :global(.mw-info-title),
+  :global(:root[data-theme='light']) #meowInfo :global(.mw-up-name) {
+    color: #10131d;
+    text-shadow: none;
+  }
+
+  :global(:root[data-theme='light']) .mw-shop :global(.mw-tower),
+  :global(:root[data-theme='light']) #meowInfo :global(.mw-up) {
+    color: #3b4356;
+    border-color: rgba(11, 16, 32, 0.1);
+  }
+</style>
+
+<script>
+  import { readStat, recordRun } from '../../lib/save-store';
+  import { catPortrait } from '../../games/meow/art.ts';
+  import { BLOONS, TARGET_LABEL, TOWERS, TOWER_ORDER, type TowerKind } from '../../games/meow/data.ts';
+  import { MeowGame, type GameEvent, type Tower } from '../../games/meow/engine.ts';
+  import { FIELD_H, FIELD_W, MAPS } from '../../games/meow/maps.ts';
+  import { Fx, drawScene, paintBackground } from '../../games/meow/render.ts';
+  import type { FrameView, Quality } from '../../games/meow/pixi-view.ts';
+  import { TOTAL_WAVES, waveHint } from '../../games/meow/waves.ts';
+
+  type Mode = 'loading' | 'ready' | 'playing' | 'paused' | 'over' | 'won';
+  type QualityPref = 'auto' | Quality;
+
+  interface Renderer {
+    frame(game: MeowGame, v: FrameView, dt: number): void;
+    events(e: GameEvent[]): void;
+    upgraded(t: Tower, name: string): void;
+    sold(t: Tower, value: number): void;
+    setQuality(q: Quality): void;
+    destroy(): void;
+  }
+
+  /** 没有 WebGL 时的兜底：沿用 Canvas 2D 版本 */
+  class CanvasRenderer implements Renderer {
+    private ctx: CanvasRenderingContext2D;
+    private bg: HTMLCanvasElement | null = null;
+    private fx = new Fx();
+
+    constructor(canvas: HTMLCanvasElement) {
+      const dpr = Math.min(2, window.devicePixelRatio || 1);
+      canvas.width = FIELD_W * dpr;
+      canvas.height = FIELD_H * dpr;
+      this.ctx = canvas.getContext('2d')!;
+      this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+
+    frame(game: MeowGame, v: FrameView, dt: number) {
+      if (!this.bg) this.bg = paintBackground(game.map, game.geo, Math.min(2, window.devicePixelRatio || 1));
+      this.fx.update(dt);
+      drawScene(this.ctx, game, this.bg, this.fx, v);
+    }
+    events(e: GameEvent[]) {
+      this.fx.consume(e);
+    }
+    upgraded() {}
+    sold() {}
+    setQuality() {}
+    destroy() {}
+  }
+
+  const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T | null;
+  const SPEEDS = [1, 2, 3];
+  const QUALITY_KEY = 'meow.quality';
+
+  const ICON = {
+    lock: '<svg viewBox="0 0 24 24" width="11" height="11"><path d="M7 10V8a5 5 0 0 1 10 0v2h1v11H6V10zm2 0h6V8a3 3 0 0 0-6 0z" fill="currentColor"/></svg>',
+  };
+
+  let raf = 0;
+  let token = 0;
+  let canvas: HTMLCanvasElement | null = null;
+  let view: Renderer | null = null;
+  let game: MeowGame;
+  let mode: Mode = 'loading';
+  let speedIdx = 0;
+  let best = 0;
+  let recorded = false;
+  let last = 0;
+  let clock = 0;
+  let placing: TowerKind | null = null;
+  let selected: Tower | null = null;
+  let hover: { x: number; y: number } | null = null;
+  let banner: FrameView['banner'] = null;
+  let infoKey = '';
+  let hudKey = '';
+  let hurtTimer = 0;
+  let shownMoney = 0;
+  let gainTimer = 0;
+  let qualityPref: QualityPref = 'auto';
+  let quality: Quality = 'high';
+  let perfFrames = 0;
+  let perfTime = 0;
+  let portraits: Partial<Record<TowerKind, string>> = {};
+  const cleanups: (() => void)[] = [];
+
+  function on(target: Window | HTMLElement, type: string, fn: (e: any) => void, opts?: AddEventListenerOptions) {
+    target.addEventListener(type, fn, opts);
+    cleanups.push(() => target.removeEventListener(type, fn, opts));
+  }
+
+  function portrait(k: TowerKind) {
+    if (!portraits[k]) portraits[k] = catPortrait(k, 96);
+    return portraits[k]!;
+  }
+
+  /* ---------------- 遮罩 ---------------- */
+
+  function overlay(kicker: string, title: string, desc: string, btn: string | null, btn2: string | null = null) {
+    const ov = $('meowOverlay');
+    if (!ov) return;
+    $('meowKicker')!.textContent = kicker;
+    $('meowTitle')!.textContent = title;
+    $('meowDesc')!.innerHTML = desc;
+    const b = $<HTMLButtonElement>('meowBtn')!;
+    const b2 = $<HTMLButtonElement>('meowBtn2')!;
+    b.hidden = !btn;
+    b.disabled = false;
+    if (btn) b.textContent = btn;
+    b2.hidden = !btn2;
+    if (btn2) b2.textContent = btn2;
+    ov.hidden = false;
+  }
+
+  function hideOverlay() {
+    const ov = $('meowOverlay');
+    if (ov) ov.hidden = true;
+  }
+
+  function showBanner(title: string, sub = '', dur = 2.2) {
+    banner = { title, sub, life: dur, max: dur };
+  }
+
+  /* ---------------- 流程 ---------------- */
+
+  function newGame() {
+    game = new MeowGame(MAPS[0]);
+    placing = null;
+    selected = null;
+    banner = null;
+    recorded = false;
+    infoKey = '';
+    hudKey = '';
+    shownMoney = game.money;
+    syncAutoBtn();
+  }
+
+  function start() {
+    if (mode === 'loading') return;
+    const auto = game?.auto ?? false;
+    newGame();
+    game.auto = auto;
+    syncAutoBtn();
+    mode = 'playing';
+    hideOverlay();
+    showBanner('选猫，放下，按空格开波', '气球会从左上角的紫色传送门进来', 3);
+  }
+
+  function record() {
+    if (recorded || game.wave === 0) return;
+    recorded = true;
+    const score = game.pops;
+    if (score > best) best = score;
+    void recordRun('meow', score, { level: game.wave });
+  }
+
+  function nextWave() {
+    if (mode === 'playing') game.startWave();
+  }
+
+  function togglePause() {
+    if (mode === 'playing') {
+      mode = 'paused';
+      overlay('PAUSED', '暂停中', '按 <b>P</b> 或空格继续', '继续');
+    } else if (mode === 'paused') {
+      mode = 'playing';
+      last = performance.now();
+      hideOverlay();
+    }
+  }
+
+  function cycleSpeed() {
+    speedIdx = (speedIdx + 1) % SPEEDS.length;
+    $('meowSpeedText')!.textContent = `${SPEEDS[speedIdx]}×`;
+    $('meowSpeed')?.classList.toggle('is-on', speedIdx > 0);
+  }
+
+  function toggleAuto() {
+    game.auto = !game.auto;
+    syncAutoBtn();
+    if (game.auto && game.state === 'build' && game.wave > 0) nextWave();
+  }
+
+  function syncAutoBtn() {
+    const t = $('meowAutoText');
+    if (t) t.textContent = game?.auto ? '自动 · 开' : '自动 · 关';
+    $('meowAuto')?.classList.toggle('is-on', !!game?.auto);
+  }
+
+  /* ---------------- 画质 ---------------- */
+
+  function applyQuality(q: Quality) {
+    quality = q;
+    view?.setQuality(q);
+    syncQualityBtn();
+  }
+
+  function syncQualityBtn() {
+    const t = $('meowQualityText');
+    if (!t) return;
+    const name = quality === 'high' ? '高' : '流畅';
+    t.textContent = qualityPref === 'auto' ? `画质 · 自动（${name}）` : `画质 · ${name}`;
+  }
+
+  function cycleQuality() {
+    qualityPref = qualityPref === 'auto' ? 'high' : qualityPref === 'high' ? 'low' : 'auto';
+    try {
+      localStorage.setItem(QUALITY_KEY, qualityPref);
+    } catch {
+      /* 隐私模式下写不进去也无所谓 */
+    }
+    perfFrames = 0;
+    perfTime = 0;
+    applyQuality(qualityPref === 'low' ? 'low' : 'high');
+  }
+
+  /** 自动档：连续掉帧就降到流畅档 */
+  function watchPerf(dt: number) {
+    if (qualityPref !== 'auto' || quality !== 'high' || mode !== 'playing') return;
+    perfFrames += 1;
+    perfTime += dt;
+    if (perfFrames < 150) return;
+    const fps = perfFrames / perfTime;
+    perfFrames = 0;
+    perfTime = 0;
+    if (fps < 42) {
+      applyQuality('low');
+      showBanner('画面已切到流畅档', '可以在下方「画质」按钮里改回来', 2.2);
+    }
+  }
+
+  /* ---------------- 事件 ---------------- */
+
+  function handleEvents() {
+    const events = game.drain();
+    view?.events(events);
+    for (const e of events) {
+      if (e.k === 'waveStart') {
+        const hint = waveHint(e.wave);
+        const total = game.endless ? '· 无尽' : `/ ${TOTAL_WAVES}`;
+        showBanner(`第 ${e.wave} 波 ${total}`, hint ?? '', hint ? 2.8 : 1.6);
+      } else if (e.k === 'waveEnd') {
+        if (game.state !== 'won') showBanner(`第 ${e.wave} 波清完`, `奖励 +${e.bonus} 金币`, 1.6);
+      } else if (e.k === 'leak') {
+        hurtTimer = 0.5;
+      } else if (e.k === 'over') {
+        mode = 'over';
+        const isNew = game.pops > best;
+        record();
+        overlay(
+          isNew ? 'NEW RECORD' : 'GAME OVER',
+          isNew ? '新纪录！' : '鱼干被偷光了',
+          `坚持到第 <b>${game.wave}</b> 波 · 戳破 <b>${game.pops}</b> 个气球<br>按 <b>空格</b> 再来一局`,
+          '再来一局',
+        );
+      } else if (e.k === 'win') {
+        mode = 'won';
+        overlay(
+          'VICTORY',
+          '三十波全守住了！',
+          `剩余鱼干 <b>${game.lives}</b> · 戳破 <b>${game.pops}</b> 个气球<br>还想继续？无尽模式里飞艇会越来越硬`,
+          '继续无尽模式',
+          '结算并再来一局',
+        );
+      }
+    }
+  }
+
+  /* ---------------- 侧栏 ---------------- */
+
+  function renderShop() {
+    const box = $('meowShop');
+    if (!box) return;
+    box.innerHTML = TOWER_ORDER.map((k, i) => {
+      const d = TOWERS[k];
+      return `<button type="button" class="mw-tower" data-kind="${k}" title="${d.desc}" style="--c:${d.color}">
+        <img src="${portrait(k)}" alt="" />
+        <span class="mw-tname">${d.name}<small>按键 ${i + 1}</small></span>
+        <span class="mw-cost">$${d.cost}</span>
+      </button>`;
+    }).join('');
+  }
+
+  function syncShop() {
+    document.querySelectorAll<HTMLButtonElement>('#meowShop .mw-tower').forEach((b) => {
+      const k = b.dataset.kind as TowerKind;
+      b.classList.toggle('is-poor', game.money < TOWERS[k].cost);
+      b.classList.toggle('is-on', placing === k);
+    });
+  }
+
+  function syncHud(dt: number) {
+    if (Math.abs(shownMoney - game.money) > 0.5) {
+      if (game.money > shownMoney) gainTimer = 0.25;
+      shownMoney += (game.money - shownMoney) * Math.min(1, dt * 12);
+    } else shownMoney = game.money;
+    gainTimer -= dt;
+    $('meowMoneyBox')?.classList.toggle('is-gain', gainTimer > 0);
+    const prog = $('meowProg');
+    if (prog) prog.style.width = `${Math.round(game.waveProgress * 100)}%`;
+
+    const key = `${game.lives}|${Math.round(shownMoney)}|${game.wave}|${game.pops}|${best}|${game.state}|${mode}`;
+    if (key === hudKey) return;
+    hudKey = key;
+    $('meowLives')!.textContent = String(Math.max(0, game.lives));
+    $('meowMoney')!.textContent = `$${Math.round(shownMoney)}`;
+    $('meowWave')!.textContent = game.endless ? `${game.wave} · 无尽` : `${game.wave} / ${TOTAL_WAVES}`;
+    $('meowPops')!.textContent = game.pops.toLocaleString('en-US');
+    $('meowBest')!.textContent = Math.max(best, game.pops).toLocaleString('en-US');
+
+    const next = $<HTMLButtonElement>('meowNext')!;
+    next.disabled = !(mode === 'playing' && game.state === 'build');
+    $('meowNextText')!.textContent =
+      game.state === 'wave' ? `第 ${game.wave} 波进行中` : `开始第 ${game.wave + 1} 波`;
+    syncShop();
+  }
+
+  function upgradeCard(t: Tower, p: 0 | 1): string {
+    const c = game.checkUpgrade(t, p);
+    const tiers = [0, 1, 2].map((i) => `<i class="${i < t.tiers[p] ? 'on' : ''}"></i>`).join('');
+    const head = `<span class="mw-up-head"><span>${p === 0 ? 'Z' : 'X'} · ${t.def.pathNames[p]}</span><span class="mw-tiers">${tiers}</span></span>`;
+    if (c.state === 'max') {
+      return `<button class="mw-up" type="button" disabled>${head}<span class="mw-up-name">已满级</span></button>`;
+    }
+    if (c.state === 'locked') {
+      return `<button class="mw-up" type="button" disabled>${head}<span class="mw-up-name">${ICON.lock} ${c.up.name}</span><span class="mw-up-desc">另一条路线已到顶级，这条最多升两级</span></button>`;
+    }
+    return `<button class="mw-up" type="button" data-act="up${p}" ${c.state === 'poor' ? 'disabled' : ''}>
+      ${head}
+      <span class="mw-up-name">${c.up.name} <span class="mw-cost">$${c.cost}</span></span>
+      <span class="mw-up-desc">${c.up.desc}</span>
+    </button>`;
+  }
+
+  function syncInfo() {
+    const box = $('meowInfo');
+    if (!box) return;
+    if (selected && !game.towers.includes(selected)) selected = null;
+
+    let key: string;
+    if (selected) {
+      const t = selected;
+      const s0 = game.checkUpgrade(t, 0).state;
+      const s1 = game.checkUpgrade(t, 1).state;
+      key = `t${t.id}|${t.tiers}|${s0}|${s1}|${t.target}|${Math.floor(t.pops / 10)}`;
+    } else if (placing) {
+      key = `p${placing}|${game.money >= TOWERS[placing].cost}`;
+    } else {
+      key = 'idle';
+    }
+    if (key === infoKey) return;
+    infoKey = key;
+
+    if (selected) {
+      const t = selected;
+      const s = t.stats;
+      const traits = [s.camo ? '能看迷彩' : '', s.type === 'energy' ? '能打铅' : '', s.type === 'blast' ? '能炸铅' : '']
+        .filter(Boolean)
+        .join(' · ');
+      box.style.setProperty('--c', t.def.color);
+      box.innerHTML = `
+        <p class="gx-panel-label">SELECTED · 已选</p>
+        <div class="mw-info-head">
+          <img src="${portrait(t.def.id)}" alt="" />
+          <div>
+            <p class="mw-info-title">${t.def.name}</p>
+            <p class="mw-info-sub">戳破 ${t.pops} · 射程 ${s.range > 2000 ? '全图' : Math.round(s.range)}${traits ? '<br>' + traits : ''}</p>
+          </div>
+        </div>
+        ${upgradeCard(t, 0)}
+        ${upgradeCard(t, 1)}
+        <div class="mw-row">
+          ${
+            t.def.id === 'ice'
+              ? ''
+              : `<button class="gx-btn gx-btn--ghost" type="button" data-act="target">T · 目标：${TARGET_LABEL[t.target]}</button>`
+          }
+          <button class="gx-btn gx-btn--ghost mw-sell" type="button" data-act="sell">卖出 $${game.sellValue(t)}</button>
+        </div>`;
+    } else if (placing) {
+      const d = TOWERS[placing];
+      box.style.setProperty('--c', d.color);
+      box.innerHTML = `
+        <p class="gx-panel-label">PLACING · 放置</p>
+        <div class="mw-info-head">
+          <img src="${portrait(placing)}" alt="" />
+          <div>
+            <p class="mw-info-title">${d.name} <span class="mw-cost">$${d.cost}</span></p>
+            <p class="mw-info-sub">${d.desc}</p>
+          </div>
+        </div>
+        <p class="gx-note">点地图空地放下（不能压在路上）。按住 <strong>Shift</strong> 连续放置，右键或 Esc 取消。</p>`;
+    } else {
+      box.innerHTML = `
+        <p class="gx-panel-label">TIP · 气球图鉴</p>
+        <p class="gx-note">
+          <strong>铅气球</strong>飞爪戳不动；<strong>黑气球</strong>炸不动；<strong>白气球</strong>冻不住；
+          <strong>斑马</strong>两样都不怕；带斑点和虚线圈的是<strong>迷彩</strong>，要「夜视」才看得见。
+          漏掉一个气球，会按它肚子里的层数扣鱼干。点已放下的猫猫可以升级或卖出。
+        </p>`;
+    }
+  }
+
+  /* ---------------- 输入 ---------------- */
+
+  function toField(e: { clientX: number; clientY: number }) {
+    const rect = canvas!.getBoundingClientRect();
+    return {
+      x: ((e.clientX - rect.left) / rect.width) * FIELD_W,
+      y: ((e.clientY - rect.top) / rect.height) * FIELD_H,
+    };
+  }
+
+  function choose(kind: TowerKind) {
+    if (mode !== 'playing') return;
+    placing = placing === kind ? null : kind;
+    selected = null;
+  }
+
+  function cancel() {
+    placing = null;
+    selected = null;
+  }
+
+  function doUpgrade(p: 0 | 1) {
+    if (!selected || mode !== 'playing') return;
+    const c = game.checkUpgrade(selected, p);
+    if (c.state !== 'ok') return;
+    const name = c.up.name;
+    if (game.upgrade(selected, p)) {
+      view?.upgraded(selected, name);
+      infoKey = '';
+      syncInfo();
+      document.querySelector(`#meowInfo .mw-up:nth-of-type(${p + 1})`)?.classList.add('is-bought');
+    }
+  }
+
+  function doSell() {
+    if (selected && mode === 'playing') {
+      const value = game.sellValue(selected);
+      view?.sold(selected, value);
+      game.sell(selected);
+      selected = null;
+    }
+  }
+
+  function doTarget() {
+    if (selected && mode === 'playing') game.cycleTarget(selected);
+  }
+
+  function onCanvasClick(e: MouseEvent) {
+    if (mode !== 'playing') return;
+    const p = toField(e);
+    if (placing) {
+      const def = TOWERS[placing];
+      if (game.money < def.cost) {
+        showBanner('金币不够', `${def.name} 需要 $${def.cost}`, 1.2);
+        return;
+      }
+      const t = game.place(placing, p.x, p.y);
+      if (!t) {
+        showBanner('这里放不下', '离路和其他猫猫远一点', 1.1);
+        return;
+      }
+      if (!e.shiftKey || game.money < def.cost) placing = null;
+      return;
+    }
+    selected = game.towerAt(p.x, p.y);
+  }
+
+  function onKey(e: KeyboardEvent) {
+    const tag = (e.target as HTMLElement | null)?.tagName;
+    if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+    const k = e.key;
+    let used = true;
+    if (k === ' ') {
+      if (mode === 'ready' || mode === 'over') start();
+      else if (mode === 'paused') togglePause();
+      else if (mode === 'playing') nextWave();
+      else used = false;
+    } else if (k >= '1' && k <= '5') choose(TOWER_ORDER[Number(k) - 1]);
+    else if (k === 'Escape') {
+      if (placing || selected) cancel();
+      else togglePause();
+    } else if (k === 'p' || k === 'P') togglePause();
+    else if (k === 'f' || k === 'F') cycleSpeed();
+    else if (k === 'a' || k === 'A') toggleAuto();
+    else if (k === 'z' || k === 'Z') doUpgrade(0);
+    else if (k === 'x' || k === 'X') doUpgrade(1);
+    else if (k === 't' || k === 'T') doTarget();
+    else if (k === 'Delete' || k === 'Backspace') doSell();
+    else used = false;
+    if (used) e.preventDefault();
+  }
+
+  /* ---------------- 主循环 ---------------- */
+
+  function hintText() {
+    if (mode !== 'playing') return '';
+    if (game.state === 'build' && game.wave > 0) return '建造阶段 · 空格开始下一波';
+    if (game.state === 'build') return '选一只猫猫放到路边';
+    return '';
+  }
+
+  function loop(now: number) {
+    raf = requestAnimationFrame(loop);
+    if (!canvas || !canvas.isConnected || !view) {
+      cancelAnimationFrame(raf);
+      return;
+    }
+    const raw = (now - last) / 1000;
+    const dt = Math.min(0.05, raw);
+    last = now;
+    clock += dt;
+
+    if (mode === 'playing') {
+      game.update(dt * SPEEDS[speedIdx]);
+      handleEvents();
+      watchPerf(raw);
+    }
+    if (banner) {
+      banner.life -= dt;
+      if (banner.life <= 0) banner = null;
+    }
+    if (hurtTimer > 0) hurtTimer -= dt;
+    $('meowLivesBox')?.classList.toggle('is-hurt', hurtTimer > 0);
+
+    const placeDef = placing ? TOWERS[placing] : null;
+    view.frame(
+      game,
+      {
+        time: clock,
+        hover,
+        placing: placeDef,
+        placeOk: !!(placing && hover && game.canPlace(placing, hover.x, hover.y) && game.money >= TOWERS[placing].cost),
+        selected,
+        hoverTower: hover && !placing ? game.towerAt(hover.x, hover.y) : null,
+        banner,
+        speed: SPEEDS[speedIdx],
+        hint: hintText(),
+      },
+      dt,
+    );
+
+    if (canvas) canvas.style.cursor = placing ? 'crosshair' : hover && game.towerAt(hover.x, hover.y) ? 'pointer' : 'default';
+    syncHud(dt);
+    syncInfo();
+  }
+
+  async function createRenderer(): Promise<Renderer> {
+    try {
+      const { PixiView } = await import('../../games/meow/pixi-view.ts');
+      return await PixiView.create(canvas!, quality);
+    } catch (err) {
+      console.warn('[meow] WebGL 不可用，改用 Canvas 2D：', err);
+      // WebGL 初始化失败后原画布可能已被占用，换一块新的
+      const fresh = canvas!.cloneNode(false) as HTMLCanvasElement;
+      canvas!.replaceWith(fresh);
+      canvas = fresh;
+      bindCanvas();
+      return new CanvasRenderer(fresh);
+    }
+  }
+
+  function bindCanvas() {
+    if (!canvas) return;
+    on(canvas, 'pointermove', (e: PointerEvent) => {
+      hover = toField(e);
+    });
+    on(canvas, 'pointerleave', () => {
+      hover = null;
+    });
+    on(canvas, 'click', onCanvasClick);
+    on(canvas, 'contextmenu', (e: MouseEvent) => {
+      e.preventDefault();
+      cancel();
+    });
+  }
+
+  async function setup() {
+    const my = ++token;
+    canvas = $<HTMLCanvasElement>('meowCanvas');
+    if (!canvas) return;
+
+    try {
+      const saved = localStorage.getItem(QUALITY_KEY);
+      if (saved === 'auto' || saved === 'high' || saved === 'low') qualityPref = saved;
+    } catch {
+      /* 读不到就用默认 */
+    }
+    quality = qualityPref === 'low' ? 'low' : 'high';
+
+    newGame();
+    renderShop();
+    syncQualityBtn();
+    bindCanvas();
+
+    void readStat('meow').then((rec) => {
+      best = Math.max(best, rec.best || 0);
+      hudKey = '';
+    });
+
+    on($<HTMLButtonElement>('meowBtn')!, 'click', () => {
+      if (mode === 'paused') togglePause();
+      else if (mode === 'won') {
+        game.continueEndless();
+        mode = 'playing';
+        hideOverlay();
+        showBanner('无尽模式', '飞艇和陶瓷会越来越硬', 2.4);
+      } else start();
+    });
+    on($<HTMLButtonElement>('meowBtn2')!, 'click', () => {
+      record();
+      start();
+    });
+    on($<HTMLButtonElement>('meowNext')!, 'click', nextWave);
+    on($<HTMLButtonElement>('meowSpeed')!, 'click', cycleSpeed);
+    on($<HTMLButtonElement>('meowAuto')!, 'click', toggleAuto);
+    on($<HTMLButtonElement>('meowPause')!, 'click', togglePause);
+    on($<HTMLButtonElement>('meowQuality')!, 'click', cycleQuality);
+
+    on($('meowShop')!, 'click', (e: MouseEvent) => {
+      const b = (e.target as HTMLElement).closest<HTMLButtonElement>('.mw-tower');
+      if (b) choose(b.dataset.kind as TowerKind);
+    });
+    on($('meowInfo')!, 'click', (e: MouseEvent) => {
+      const b = (e.target as HTMLElement).closest<HTMLButtonElement>('[data-act]');
+      if (!b || b.disabled) return;
+      const act = b.dataset.act;
+      if (act === 'up0') doUpgrade(0);
+      else if (act === 'up1') doUpgrade(1);
+      else if (act === 'sell') doSell();
+      else if (act === 'target') doTarget();
+    });
+
+    on(window, 'keydown', onKey);
+    on(window, 'blur', () => {
+      if (mode === 'playing') togglePause();
+    });
+
+    const r = await createRenderer();
+    if (my !== token) {
+      r.destroy();
+      return;
+    }
+    view = r;
+    mode = 'ready';
+    overlay(
+      'READY',
+      '喵星防线',
+      `从右侧选一只猫猫，点地图空地放下，再按 <b>空格</b> 放出第一波<br>共 ${TOTAL_WAVES} 波，最后是${BLOONS.boss.name}`,
+      '开始游戏',
+    );
+    last = performance.now();
+    raf = requestAnimationFrame(loop);
+  }
+
+  function destroy() {
+    token += 1;
+    cancelAnimationFrame(raf);
+    if (mode === 'won') record();
+    while (cleanups.length) cleanups.pop()!();
+    view?.destroy();
+    view = null;
+    canvas = null;
+    portraits = {};
+    mode = 'loading';
+  }
+
+  function boot() {
+    const root = document.getElementById('meowRoot');
+    if (!root || root.dataset.booted) return;
+    root.dataset.booted = '1';
+    void setup();
+  }
+
+  document.addEventListener('astro:page-load', boot);
+  document.addEventListener('astro:before-swap', destroy);
+  boot();
+</script>

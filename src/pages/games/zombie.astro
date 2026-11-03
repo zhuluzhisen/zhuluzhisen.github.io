@@ -1,0 +1,1663 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import PlayerBar from '../../components/PlayerBar.astro';
+import '../../styles/games.css';
+---
+
+<BaseLayout
+  title="残响"
+  description="残响 · 像素丧尸生存 RPG，实时动作战斗，线性叙事第一章"
+>
+  <div class="gx-page container-x" id="gzRoot">
+    <a class="gx-back" href="/games">
+      <i class="ri-arrow-left-line" aria-hidden="true"></i>
+      游戏厅
+    </a>
+
+    <header class="gx-head">
+      <div class="gx-head-row">
+        <div>
+          <p class="gx-kicker">ECHOES · 第一章</p>
+          <h1 class="gx-title">残响</h1>
+        </div>
+        <PlayerBar />
+      </div>
+      <p class="gx-sub">
+        像素丧尸生存 RPG。实时挥砍，走近敌人出手比逃跑更划算。第一章《醒来》——
+        从一张空病床开始，走到街道尽头。
+      </p>
+    </header>
+
+    <div class="gx-stage">
+      <div class="gx-board-col">
+        <div class="gx-screen gz-screen">
+          <canvas id="gzCanvas" width="320" height="180"></canvas>
+
+          <!-- 战斗 HUD -->
+          <div class="gz-hud" id="gzHud" hidden>
+            <div class="gz-hud-row">
+              <span class="gz-hud-label">生命</span>
+              <div class="gz-bar"><i id="gzHpFill"></i></div>
+              <span class="gz-hud-num" id="gzHpNum">100</span>
+            </div>
+            <div class="gz-hud-area" id="gzArea">病房</div>
+          </div>
+
+          <!-- 对话框 -->
+          <div class="gz-dialog" id="gzDialog" hidden>
+            <div class="gz-dialog-name" id="gzDlgName"></div>
+            <p class="gz-dialog-text" id="gzDlgText"></p>
+            <span class="gz-dialog-next" id="gzDlgNext">空格 / 点击 继续 ▾</span>
+          </div>
+
+          <!-- 开始 / 结束遮罩 -->
+          <div class="gx-overlay" id="gzOverlay">
+            <div class="gx-overlay-card">
+              <p class="gx-overlay-kicker" id="gzKicker">CHAPTER 01</p>
+              <h2 class="gx-overlay-title" id="gzTitle">残响</h2>
+              <p class="gx-overlay-desc" id="gzDesc">
+                第七天。消毒水的味道还在，但已经没有人来换药了。<br />
+                <b>WASD</b> 移动 · <b>空格</b> 挥砍 · 走近门离开
+              </p>
+              <button class="gx-btn" id="gzBtn" type="button">推开门</button>
+            </div>
+          </div>
+
+          <!-- 触屏攻击键 -->
+          <button class="gz-touch-atk" id="gzAtk" type="button" aria-label="攻击">砍</button>
+        </div>
+      </div>
+
+      <aside class="gx-side">
+        <div class="gx-panel">
+          <p class="gx-panel-label">STATUS · 当前状态</p>
+          <p class="gz-stat-line"><span>场景</span><b id="gzScene">—</b></p>
+          <p class="gz-stat-line"><span>击杀</span><b id="gzKills">0</b></p>
+          <p class="gz-stat-line"><span>进度</span><b id="gzProg">0 / 3</b></p>
+        </div>
+
+        <div class="gx-panel">
+          <p class="gx-panel-label">CONTROLS · 操作</p>
+          <div class="gx-keys">
+            <span class="gx-key">W A S D / ↑↓←→</span>
+            <span class="gx-key">空格 挥砍</span>
+            <span class="gx-key">空格 推进对话</span>
+            <span class="gx-key">R 重来</span>
+          </div>
+        </div>
+
+        <div class="gx-panel">
+          <p class="gx-panel-label">NOTE · 说明</p>
+          <p class="gx-note">
+            挥砍有前摇，硬顶着出手会被咬。打完一刀先侧移，等对方的硬直结束再上前。
+            手机左半屏拖动移动，左下角按钮攻击。
+          </p>
+        </div>
+      </aside>
+    </div>
+  </div>
+</BaseLayout>
+
+<style>
+  /* 320×180 的画布用 640px 显示 = 整数 2 倍缩放，像素边缘不会发虚 */
+  .gz-screen {
+    max-width: 640px;
+    margin: 0 auto;
+  }
+
+  .gz-screen canvas {
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+    background: #0a0c12;
+  }
+
+  .gz-hud {
+    position: absolute;
+    inset: 0 0 auto 0;
+    padding: 0.55rem 0.7rem;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    z-index: 2;
+    pointer-events: none;
+    font-size: 0.7rem;
+    letter-spacing: 0.04em;
+    color: rgba(255, 255, 255, 0.82);
+    background: linear-gradient(to bottom, rgba(4, 6, 12, 0.82), transparent);
+  }
+
+  .gz-hud[hidden] {
+    display: none;
+  }
+
+  .gz-hud-row {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+
+  .gz-hud-label {
+    opacity: 0.6;
+    font-size: 0.66rem;
+  }
+
+  .gz-bar {
+    width: 96px;
+    height: 7px;
+    border-radius: 99px;
+    background: rgba(255, 255, 255, 0.12);
+    overflow: hidden;
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+  }
+
+  .gz-bar i {
+    display: block;
+    height: 100%;
+    width: 100%;
+    border-radius: 99px;
+    background: linear-gradient(90deg, #f87171, #ef4444);
+    transition: width 0.18s ease-out;
+  }
+
+  .gz-hud-num {
+    font-variant-numeric: tabular-nums;
+    opacity: 0.7;
+    min-width: 24px;
+  }
+
+  .gz-hud-area {
+    margin-left: auto;
+    padding: 0.14rem 0.5rem;
+    border-radius: 99px;
+    background: rgba(255, 255, 255, 0.07);
+    font-size: 0.64rem;
+    letter-spacing: 0.1em;
+    opacity: 0.8;
+  }
+
+  .gz-dialog {
+    position: absolute;
+    left: 0.6rem;
+    right: 0.6rem;
+    bottom: 0.6rem;
+    z-index: 4;
+    padding: 0.65rem 0.8rem 1.15rem;
+    border-radius: 12px;
+    background: linear-gradient(180deg, rgba(8, 10, 18, 0.93), rgba(4, 5, 10, 0.97));
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    box-shadow: 0 18px 46px -22px rgba(0, 0, 0, 0.9);
+    backdrop-filter: blur(3px);
+    -webkit-backdrop-filter: blur(3px);
+    cursor: pointer;
+    animation: gz-dlg-in 0.18s ease-out both;
+  }
+
+  .gz-dialog[hidden] {
+    display: none;
+  }
+
+  @keyframes gz-dlg-in {
+    from {
+      opacity: 0;
+      transform: translateY(6px);
+    }
+  }
+
+  .gz-dialog-name {
+    font-size: 0.72rem;
+    letter-spacing: 0.14em;
+    color: #7dd3fc;
+    margin-bottom: 0.28rem;
+    min-height: 1em;
+  }
+
+  .gz-dialog-text {
+    font-size: 0.86rem;
+    line-height: 1.65;
+    color: rgba(255, 255, 255, 0.92);
+    min-height: 2.9em;
+    margin: 0;
+  }
+
+  .gz-dialog.is-narration .gz-dialog-text {
+    color: rgba(255, 255, 255, 0.68);
+    font-style: italic;
+  }
+
+  .gz-dialog-next {
+    position: absolute;
+    right: 0.8rem;
+    bottom: 0.45rem;
+    font-size: 0.62rem;
+    letter-spacing: 0.08em;
+    color: rgba(255, 255, 255, 0.42);
+    animation: gz-blink 1.4s ease-in-out infinite;
+  }
+
+  @keyframes gz-blink {
+    50% {
+      opacity: 0.35;
+    }
+  }
+
+  .gz-touch-atk {
+    display: none;
+    position: absolute;
+    right: 0.8rem;
+    bottom: 3.6rem;
+    z-index: 3;
+    width: 62px;
+    height: 62px;
+    border-radius: 50%;
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    background: rgba(239, 68, 68, 0.22);
+    color: rgba(255, 255, 255, 0.92);
+    font-size: 0.92rem;
+    letter-spacing: 0.1em;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: none;
+  }
+
+  .gz-touch-atk:active {
+    background: rgba(239, 68, 68, 0.45);
+    transform: scale(0.94);
+  }
+
+  @media (hover: none) and (pointer: coarse) {
+    .gz-touch-atk {
+      display: block;
+    }
+  }
+
+  .gz-stat-line {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin: 0.34rem 0;
+    font-size: 0.78rem;
+  }
+
+  .gz-stat-line span {
+    opacity: 0.55;
+    font-size: 0.72rem;
+    letter-spacing: 0.06em;
+  }
+
+  .gz-stat-line b {
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+    color: rgba(125, 211, 252, 0.95);
+  }
+</style>
+
+<script>
+  import { recordRun } from '../../lib/save-store';
+
+  /* =========================================================================
+   * 《残响》像素丧尸 RPG · 第一章 Demo
+   * -------------------------------------------------------------------------
+   * 剧情全部集中在下方 STORY 里。改台词只动这里，不用碰引擎。
+   * 场景地图在 SCENES 里，每个字符是一格（16px）：
+   *   # 墙   . 地面   , 血迹   ~ 塌陷   T 障碍   + 门
+   *   X 出生点   z 普通感染者   Z 精英感染者   p 补给
+   * ========================================================================= */
+
+  type Line = { who: string; text: string };
+
+  const STORY: Record<string, Line[]> = {
+    intro: [
+      { who: '', text: '第七天。' },
+      { who: '', text: '消毒水的味道还在，但已经没有人来换药了。' },
+      { who: '陈默', text: '……我还活着。' },
+      { who: '陈默', text: '腕上的输液针被谁拔掉了。地板上有一道拖痕，通向门外。' },
+      { who: '', text: '（WASD 移动，空格挥砍。走近门就离开这里。）' },
+    ],
+    corridor: [
+      { who: '', text: '应急灯每隔三秒闪一次，把影子拉长又砍断。' },
+      { who: '', text: '走廊尽头有东西在动 —— 不是人走路的样子。' },
+      { who: '陈默', text: '……别过来。' },
+      { who: '', text: '（挥砍有前摇。砍完一刀就侧移，等它硬直结束再上前。）' },
+    ],
+    street: [
+      { who: '', text: '推开防火门，风灌进来，带着铁锈味。' },
+      { who: '', text: '街上没有一辆车是完好的。高架桥下，有什么东西成片地站了起来。' },
+      { who: '陈默', text: '原来整座城都是这样。' },
+      { who: '', text: '（清掉这条街上的感染者。）' },
+    ],
+    ending: [
+      { who: '', text: '最后一只倒下了，血在柏油上摊开。' },
+      { who: '陈默', text: '这声音会引来更多。得走。' },
+      { who: '', text: '第一章《醒来》· 完' },
+      { who: '', text: '（Demo 到此。后续章节等待剧本与人物设定填入。）' },
+    ],
+  };
+
+  type Exit = { tx: number; ty: number; to: string; at: [number, number] };
+
+  const SCENES: Record<
+    string,
+    { name: string; rows: string[]; onEnter?: string; exits: Exit[] }
+  > = {
+    ward: {
+      name: '病房',
+      rows: [
+        '######################',
+        '#..T....T....T.......#',
+        '#....................#',
+        '#....................#',
+        '#..T....T....T.......#',
+        '#....X...............#',
+        '#....................#',
+        '#..T....T....T.......#',
+        '#....................#',
+        '#..... ,....  ,......#',
+        '#....................#',
+        '###########+##########',
+      ],
+      onEnter: 'intro',
+      exits: [{ tx: 11, ty: 11, to: 'corridor', at: [4, 5] }],
+    },
+    corridor: {
+      name: '三层走廊',
+      rows: [
+        '##################################',
+        '#................................#',
+        '#..T..........................T..#',
+        '#...X........z..........z........#',
+        '#................................#',
+        '#................................+',
+        '#....,.....................,.....#',
+        '#................................#',
+        '#................................#',
+        '#..T..........................T..#',
+        '#................................#',
+        '##################################',
+      ],
+      onEnter: 'corridor',
+      exits: [{ tx: 33, ty: 5, to: 'street', at: [6, 5] }],
+    },
+    street: {
+      name: '长乐街',
+      rows: [
+        '##############################',
+        '#............................#',
+        '#..C....................C....#',
+        '#............................#',
+        '#_________=_________=________#',
+        '#_______X_=_________=________#',
+        '#_________=___z_____=________#',
+        '#_________=_________=________#',
+        '#_________=_Z_______=________#',
+        '#_________=_________=___z____#',
+        '#_________=_________=________#',
+        '#______z__=_________=________#',
+        '#_________=_____z___=________#',
+        '#...C....................C...#',
+        '#............................#',
+        '##############################',
+      ],
+      onEnter: 'street',
+      exits: [],
+    },
+  };
+
+  /* ---------------- 常量 ---------------- */
+  const VW = 320;
+  const VH = 180;
+  const TS = 16;
+  const ATTACK_DUR = 0.14;
+  const ATTACK_CD = 0.36;
+  const ATTACK_LEAD = 0.06;
+
+  const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T | null;
+
+  const canvas = $<HTMLCanvasElement>('gzCanvas');
+  if (!canvas) throw new Error('canvas missing');
+  const ctx = canvas.getContext('2d')!;
+  ctx.imageSmoothingEnabled = false;
+
+  const elHpFill = $<HTMLElement>('gzHpFill');
+  const elHpNum = $<HTMLElement>('gzHpNum');
+  const elArea = $<HTMLElement>('gzArea');
+  const elHud = $<HTMLElement>('gzHud');
+  const elDialog = $<HTMLElement>('gzDialog');
+  const elDlgName = $<HTMLElement>('gzDlgName');
+  const elDlgText = $<HTMLElement>('gzDlgText');
+  const elOverlay = $<HTMLElement>('gzOverlay');
+  const elKicker = $<HTMLElement>('gzKicker');
+  const elTitle = $<HTMLElement>('gzTitle');
+  const elDesc = $<HTMLElement>('gzDesc');
+  const elBtn = $<HTMLButtonElement>('gzBtn');
+  const elScene = $<HTMLElement>('gzScene');
+  const elKills = $<HTMLElement>('gzKills');
+  const elProg = $<HTMLElement>('gzProg');
+  const elAtk = $<HTMLButtonElement>('gzAtk');
+
+  /* ---------------- 状态 ---------------- */
+  type Facing = 'up' | 'down' | 'left' | 'right';
+  type Phase = 'title' | 'play' | 'dialog' | 'dead' | 'clear';
+
+  interface Zombie {
+    x: number;
+    y: number;
+    hp: number;
+    maxHp: number;
+    kind: 'walk' | 'brute';
+    facing: number;
+    stun: number;
+    flash: number;
+    windup: number;
+    cd: number;
+    wob: number;
+    dead: boolean;
+    deadT: number;
+    lastHit: number;
+  }
+
+  let grid: string[][] = [];
+  let mapW = 0;
+  let mapH = 0;
+  let sceneId = 'ward';
+  let sceneArt: HTMLCanvasElement | null = null;
+  let phase: Phase = 'title';
+  let sceneIndex = 0;
+
+  let camX = 0;
+  let camY = 0;
+  let shake = 0;
+  let time = 0;
+  let kills = 0;
+  let hitStop = 0;
+  let endingShown = false;
+
+  const player = {
+    x: 40,
+    y: 40,
+    hp: 100,
+    maxHp: 100,
+    facing: 'down' as Facing,
+    atkCd: 0,
+    atkTime: 0,
+    atkHit: new Set<number>(),
+    inv: 0,
+    hurt: 0,
+    walk: 0,
+    moving: false,
+  };
+
+  let zombies: Zombie[] = [];
+  let particles: {
+    x: number; y: number; vx: number; vy: number;
+    life: number; max: number; color: string; size: number; grav: number;
+  }[] = [];
+  let floaters: { x: number; y: number; text: string; life: number; color: string }[] = [];
+
+  const dlg = { lines: [] as Line[], i: 0, shown: 0, acc: 0, active: false, lastShown: -1 };
+
+  const keys = new Set<string>();
+  const touchMove = { active: false, dx: 0, dy: 0, id: -1, ox: 0, oy: 0 };
+
+  /* ---------------- 工具 ---------------- */
+  const clamp = (v: number, a: number, b: number) => (v < a ? a : v > b ? b : v);
+
+  function hash(x: number, y: number) {
+    let n = x * 374761393 + y * 668265263;
+    n = (n ^ (n >> 13)) * 1274126177;
+    return ((n ^ (n >> 16)) >>> 0) / 4294967295;
+  }
+
+  function isSolid(tx: number, ty: number) {
+    if (ty < 0 || ty >= mapH || tx < 0 || tx >= mapW) return true;
+    const c = grid[ty][tx];
+    return c === '#' || c === '~' || c === 'T' || c === 'C';
+  }
+
+  /** 以脚底 (x,y) 为中心、向上 h 的碰撞盒 */
+  function collides(x: number, y: number, w: number, h: number) {
+    const x0 = Math.floor((x - w / 2) / TS);
+    const x1 = Math.floor((x + w / 2 - 0.01) / TS);
+    const y0 = Math.floor((y - h) / TS);
+    const y1 = Math.floor((y - 0.01) / TS);
+    for (let ty = y0; ty <= y1; ty++) {
+      for (let tx = x0; tx <= x1; tx++) {
+        if (isSolid(tx, ty)) return true;
+      }
+    }
+    return false;
+  }
+
+  /* ---------------- 音效 ---------------- */
+  let ac: AudioContext | null = null;
+  let noiseBuf: AudioBuffer | null = null;
+
+  function initAudio() {
+    if (ac) return;
+    try {
+      const AC = window.AudioContext || (window as any).webkitAudioContext;
+      ac = new AC();
+      const len = Math.floor(ac!.sampleRate * 0.4);
+      noiseBuf = ac!.createBuffer(1, len, ac!.sampleRate);
+      const d = noiseBuf.getChannelData(0);
+      for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+    } catch {
+      ac = null;
+    }
+  }
+
+  function sfx(kind: 'swing' | 'hit' | 'hurt' | 'die') {
+    if (!ac || !noiseBuf) return;
+    const t = ac.currentTime;
+    const src = ac.createBufferSource();
+    src.buffer = noiseBuf;
+    const g = ac.createGain();
+    const f = ac.createBiquadFilter();
+    f.type = 'bandpass';
+
+    if (kind === 'swing') {
+      f.frequency.setValueAtTime(1900, t);
+      f.frequency.exponentialRampToValueAtTime(700, t + 0.1);
+      f.Q.value = 1.1;
+      g.gain.setValueAtTime(0.1, t);
+      g.gain.exponentialRampToValueAtTime(0.001, t + 0.11);
+      src.connect(f).connect(g).connect(ac.destination);
+      src.start(t);
+      src.stop(t + 0.12);
+    } else if (kind === 'hit') {
+      f.frequency.setValueAtTime(420, t);
+      f.frequency.exponentialRampToValueAtTime(150, t + 0.09);
+      f.Q.value = 1.6;
+      g.gain.setValueAtTime(0.16, t);
+      g.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
+      src.connect(f).connect(g).connect(ac.destination);
+      src.start(t);
+      src.stop(t + 0.13);
+    } else if (kind === 'hurt') {
+      f.type = 'lowpass';
+      f.frequency.setValueAtTime(700, t);
+      g.gain.setValueAtTime(0.2, t);
+      g.gain.exponentialRampToValueAtTime(0.001, t + 0.26);
+      src.connect(f).connect(g).connect(ac.destination);
+      src.start(t);
+      src.stop(t + 0.27);
+    } else {
+      f.type = 'lowpass';
+      f.frequency.setValueAtTime(320, t);
+      f.frequency.exponentialRampToValueAtTime(90, t + 0.3);
+      g.gain.setValueAtTime(0.18, t);
+      g.gain.exponentialRampToValueAtTime(0.001, t + 0.32);
+      src.connect(f).connect(g).connect(ac.destination);
+      src.start(t);
+      src.stop(t + 0.33);
+    }
+  }
+
+  /* ---------------- 建设场景 ---------------- */
+  function buildSceneArt() {
+    const c = document.createElement('canvas');
+    c.width = mapW * TS;
+    c.height = mapH * TS;
+    const g = c.getContext('2d')!;
+    g.imageSmoothingEnabled = false;
+
+    for (let ty = 0; ty < mapH; ty++) {
+      for (let tx = 0; tx < mapW; tx++) {
+        const ch = grid[ty][tx];
+        const px = tx * TS;
+        const py = ty * TS;
+        const r = hash(tx, ty);
+
+        if (ch === '#' || ch === '+' || ch === 'T' || ch === 'C') {
+          // 墙/物件底下先铺地板，避免露出画布底色
+          g.fillStyle = '#1d2431';
+          g.fillRect(px, py, TS, TS);
+        } else if (ch === '_' || ch === '=') {
+          // 柏油路面：没有砖缝，只有细碎颗粒
+          g.fillStyle = '#1a1d25';
+          g.fillRect(px, py, TS, TS);
+          if (r > 0.78) {
+            g.fillStyle = 'rgba(255,255,255,0.026)';
+            g.fillRect(px + 3 + Math.floor(r * 8), py + 4 + Math.floor(r * 7), 1, 1);
+          }
+        } else {
+          // 统一地板：32px 大砖缝 + 不规则污渍。逐格明暗随机会让地图变成马赛克。
+          g.fillStyle = '#202836';
+          g.fillRect(px, py, TS, TS);
+          g.fillStyle = 'rgba(0,0,0,0.16)';
+          if (tx % 2 === 0) g.fillRect(px, py, 1, TS);
+          if (ty % 2 === 0) g.fillRect(px, py, TS, 1);
+
+          const r2 = hash(tx * 3 + 1, ty * 7 + 5);
+          if (r2 > 0.94) {
+            g.fillStyle = 'rgba(255,255,255,0.032)';
+            g.fillRect(px + 4 + Math.floor(r2 * 7), py + 5 + Math.floor(r2 * 5), 2, 1);
+          } else if (r2 < 0.07) {
+            g.fillStyle = 'rgba(0,0,0,0.17)';
+            g.fillRect(px + 4, py + 8, 5, 3);
+          }
+        }
+
+        if (ch === '#' || ch === '+') {
+          g.fillStyle = '#3e4a64';
+          g.fillRect(px, py, TS, TS);
+          g.fillStyle = '#54627e';
+          g.fillRect(px, py, TS, 5);
+          g.fillStyle = '#2b3346';
+          g.fillRect(px, py + TS - 5, TS, 5);
+          g.fillStyle = 'rgba(0,0,0,0.32)';
+          g.fillRect(px, py, 1, TS);
+          g.fillRect(px, py, TS, 1);
+        }
+
+        if (ch === '+') {
+          g.fillStyle = '#7a3f22';
+          g.fillRect(px + 2, py + 3, TS - 4, TS - 6);
+          g.fillStyle = '#94502c';
+          g.fillRect(px + 3, py + 4, TS - 6, TS - 9);
+          g.fillStyle = '#d4a72c';
+          g.fillRect(px + TS - 7, py + 9, 2, 2);
+          g.fillStyle = 'rgba(0,0,0,0.45)';
+          g.fillRect(px + 2, py + TS - 3, TS - 4, 2);
+        }
+
+        if (ch === 'T') {
+          g.fillStyle = 'rgba(0,0,0,0.38)';
+          g.fillRect(px + 2, py + TS - 4, TS - 3, 3);
+          g.fillStyle = '#6b5334';
+          g.fillRect(px + 1, py + 2, TS - 2, TS - 5);
+          g.fillStyle = '#8a6d45';
+          g.fillRect(px + 2, py + 3, TS - 4, 3);
+          g.fillStyle = '#4a3a24';
+          g.fillRect(px + 2, py + TS - 7, TS - 4, 2);
+        }
+
+        if (ch === '~') {
+          g.fillStyle = '#0d1017';
+          g.fillRect(px, py, TS, TS);
+          g.fillStyle = 'rgba(0,0,0,0.55)';
+          g.fillRect(px + 2, py + 2, TS - 4, 3);
+        }
+
+        if (ch === ',') {
+          // 血迹
+          g.fillStyle = 'rgba(122, 28, 34, 0.6)';
+          g.fillRect(px + 3, py + 5, 7, 4);
+          g.fillRect(px + 8, py + 8, 5, 3);
+          g.fillStyle = 'rgba(88, 18, 24, 0.55)';
+          g.fillRect(px + 1, py + 10, 4, 2);
+          g.fillRect(px + 11, py + 4, 2, 2);
+        }
+
+        if (ch === '=') {
+          // 车道虚线（纵向，一段一段）
+          g.fillStyle = 'rgba(226, 232, 240, 0.26)';
+          g.fillRect(px + 7, py + 1, 2, 9);
+        }
+
+        if (ch === 'C') {
+          // 废弃轿车（俯视）
+          g.fillStyle = 'rgba(0,0,0,0.4)';
+          g.fillRect(px + 1, py + 13, 14, 3);
+          g.fillStyle = '#2f3a4d';
+          g.fillRect(px + 1, py + 1, 14, 13);
+          g.fillStyle = '#3d4b63';
+          g.fillRect(px + 2, py + 1, 12, 2);
+          g.fillStyle = '#12171f';
+          g.fillRect(px + 3, py + 4, 10, 3);
+          g.fillRect(px + 3, py + 9, 10, 3);
+          g.fillStyle = '#222a38';
+          g.fillRect(px + 6, py + 7, 4, 2);
+        }
+      }
+    }
+
+    sceneArt = c;
+  }
+
+  /* ---------------- 场景装载 ---------------- */
+  function spawnZombie(tx: number, ty: number, kind: 'walk' | 'brute') {
+    const hp = kind === 'brute' ? 42 : 10;
+    zombies.push({
+      x: tx * TS + TS / 2,
+      y: ty * TS + TS - 2,
+      hp,
+      maxHp: hp,
+      kind,
+      facing: 1,
+      stun: 0,
+      flash: 0,
+      windup: 0,
+      cd: Math.random() * 0.5,
+      wob: Math.random() * 6.28,
+      dead: false,
+      deadT: 0,
+      lastHit: -1,
+    });
+  }
+
+  function loadScene(id: string, at?: [number, number]) {
+    const def = SCENES[id];
+    sceneId = id;
+    grid = def.rows.map((r) => r.split(''));
+    mapH = grid.length;
+    mapW = grid[0].length;
+    zombies = [];
+    particles = [];
+    floaters = [];
+
+    let spawn = { x: TS * 1.5, y: TS * 1.5 };
+    for (let ty = 0; ty < mapH; ty++) {
+      for (let tx = 0; tx < mapW; tx++) {
+        const ch = grid[ty][tx];
+        if (ch === 'X') {
+          spawn = { x: tx * TS + TS / 2, y: ty * TS + TS - 2 };
+          grid[ty][tx] = '.';
+        } else if (ch === 'z' || ch === 'Z') {
+          spawnZombie(tx, ty, ch === 'Z' ? 'brute' : 'walk');
+          grid[ty][tx] = '.';
+        } else if (ch === 'p') {
+          grid[ty][tx] = '.';
+        }
+      }
+    }
+
+    if (at) spawn = { x: at[0] * TS + TS / 2, y: at[1] * TS + TS - 2 };
+    player.x = spawn.x;
+    player.y = spawn.y;
+    player.atkTime = 0;
+    player.atkCd = 0;
+    player.inv = 0;
+
+    buildSceneArt();
+    updateCam(true);
+    (elArea as HTMLElement).textContent = def.name;
+    if (elScene) elScene.textContent = def.name;
+    if (elProg) elProg.textContent = `${sceneIndex + 1} / 3`;
+
+    if (def.onEnter) openDialog(def.onEnter);
+  }
+
+  function updateCam(snap = false) {
+    const tx = clamp(player.x - VW / 2, 0, Math.max(0, mapW * TS - VW));
+    const ty = clamp(player.y - VH / 2, 0, Math.max(0, mapH * TS - VH));
+    if (snap) {
+      camX = tx;
+      camY = ty;
+    } else {
+      camX += (tx - camX) * 0.22;
+      camY += (ty - camY) * 0.22;
+    }
+  }
+
+  /* ---------------- 对话 ---------------- */
+  function openDialog(key: string) {
+    if (phase === 'clear' || phase === 'dead') return;
+    const lines = STORY[key];
+    if (!lines || !lines.length) return;
+    dlg.lines = lines;
+    dlg.i = 0;
+    dlg.shown = 0;
+    dlg.acc = 0;
+    dlg.active = true;
+    dlg.lastShown = -1;
+    phase = 'dialog';
+    if (elDialog) elDialog.hidden = false;
+    renderDialog(true);
+  }
+
+  function renderDialog(force = false) {
+    const line = dlg.lines[dlg.i];
+    if (!line || !elDlgText) return;
+    const total = line.text.length;
+    dlg.shown = Math.min(total, dlg.shown);
+    if (!force && dlg.lastShown === dlg.shown) return;
+    dlg.lastShown = dlg.shown;
+    elDlgText.textContent = line.text.slice(0, dlg.shown);
+    if (elDlgName) elDlgName.textContent = line.who;
+    if (elDialog) {
+      elDialog.classList.toggle('is-narration', !line.who);
+      const next = elDialog.querySelector('.gz-dialog-next') as HTMLElement | null;
+      if (next) next.style.visibility = dlg.shown >= total ? 'visible' : 'hidden';
+    }
+  }
+
+  function advanceDialog() {
+    if (!dlg.active) return;
+    const line = dlg.lines[dlg.i];
+    if (!line) return closeDialog();
+    if (dlg.shown < line.text.length) {
+      dlg.shown = line.text.length;
+      // 同步计时：否则下一帧 update 会按 acc 把 shown 覆盖回去，空格要连按好几次才翻页
+      dlg.acc = line.text.length * 0.026;
+      renderDialog();
+      return;
+    }
+    dlg.i += 1;
+    dlg.shown = 0;
+    dlg.acc = 0;
+    dlg.lastShown = -1;
+    if (dlg.i >= dlg.lines.length) closeDialog();
+    else renderDialog(true);
+  }
+
+  function closeDialog() {
+    dlg.active = false;
+    if (elDialog) elDialog.hidden = true;
+    phase = 'play';
+    if (sceneId === 'street' && zombies.every((z) => z.dead)) finishGame();
+  }
+
+  /* ---------------- 攻击 ---------------- */
+  function attackBox() {
+    const d = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] }[player.facing];
+    const ax = player.x + d[0] * 13;
+    const ay = player.y - 6 + d[1] * 13;
+    return { x: ax - 10, y: ay - 10, w: 20, h: 20 };
+  }
+
+  /** 出手瞬间朝最近的敌人转身：贴脸时不用先按方向键再砍 */
+  function faceNearest() {
+    let best = 27 * 27;
+    let target: Zombie | null = null;
+    for (const z of zombies) {
+      if (z.dead) continue;
+      const dx = z.x - player.x;
+      const dy = z.y - player.y;
+      const d2 = dx * dx + dy * dy;
+      if (d2 < best) {
+        best = d2;
+        target = z;
+      }
+    }
+    if (!target) return;
+    const dx = target.x - player.x;
+    const dy = target.y - player.y;
+    if (Math.abs(dx) > Math.abs(dy)) player.facing = dx > 0 ? 'right' : 'left';
+    else player.facing = dy > 0 ? 'down' : 'up';
+  }
+
+  function doAttack() {
+    if (phase !== 'play') return;
+    if (player.atkCd > 0) return;
+    faceNearest();
+    player.atkCd = ATTACK_CD;
+    player.atkTime = ATTACK_DUR;
+    player.atkHit.clear();
+    sfx('swing');
+  }
+
+  function hitZombies(dt: number) {
+    if (player.atkTime <= 0) return;
+    if (player.atkTime > ATTACK_DUR - ATTACK_LEAD) return; // 前摇不出判定
+    const box = attackBox();
+    for (let i = 0; i < zombies.length; i++) {
+      const z = zombies[i];
+      if (z.dead || player.atkHit.has(i)) continue;
+      const zx = z.x - 5;
+      const zy = z.y - 12;
+      if (box.x < zx + 11 && box.x + box.w > zx && box.y < zy + 13 && box.y + box.h > zy) {
+        player.atkHit.add(i);
+        damageZombie(z, i);
+      }
+    }
+  }
+
+  function damageZombie(z: Zombie, i: number) {
+    const dmg = 4 + Math.floor(Math.random() * 2);
+    z.hp -= dmg;
+    z.flash = 0.14;
+    z.stun = z.kind === 'brute' ? 0.14 : 0.24;
+    const dir = player.facing === 'left' ? -1 : player.facing === 'right' ? 1 : 0;
+    const dirY = player.facing === 'up' ? -1 : player.facing === 'down' ? 1 : 0;
+    z.x += dir * 6;
+    z.y += dirY * 4;
+    z.lastHit = i;
+
+    shake = Math.min(3.2, shake + 1.9);
+    hitStop = 0.035;
+    sfx('hit');
+
+    for (let k = 0; k < 7; k++) {
+      const a = Math.random() * 6.28;
+      const sp = 30 + Math.random() * 70;
+      particles.push({
+        x: z.x,
+        y: z.y - 8,
+        vx: Math.cos(a) * sp + dir * 40,
+        vy: Math.sin(a) * sp - 20,
+        life: 0.28 + Math.random() * 0.28,
+        max: 0.56,
+        color: Math.random() > 0.4 ? '#8e1f28' : '#c0392b',
+        size: Math.random() > 0.6 ? 2 : 1,
+        grav: 260,
+      });
+    }
+
+    floaters.push({
+      x: z.x + (Math.random() * 8 - 4),
+      y: z.y - 20,
+      text: String(dmg),
+      life: 0.6,
+      color: '#fca5a5',
+    });
+
+    if (z.hp <= 0) {
+      z.dead = true;
+      z.deadT = 0;
+      kills += 1;
+      if (elKills) elKills.textContent = String(kills);
+      sfx('die');
+      shake = Math.min(4, shake + 1.4);
+      for (let k = 0; k < 14; k++) {
+        const a = Math.random() * 6.28;
+        const sp = 20 + Math.random() * 90;
+        particles.push({
+          x: z.x,
+          y: z.y - 7,
+          vx: Math.cos(a) * sp,
+          vy: Math.sin(a) * sp - 30,
+          life: 0.4 + Math.random() * 0.5,
+          max: 0.9,
+          color: Math.random() > 0.5 ? '#6b1a22' : '#3d1218',
+          size: Math.random() > 0.5 ? 2 : 1,
+          grav: 300,
+        });
+      }
+
+      if (sceneId === 'street' && zombies.every((x) => x.dead)) {
+        // 结局统一由 update() 里的单一入口触发，这里不再 setTimeout，
+        // 否则多只同时死亡会重复打开对话、把通关状态改回 dialog。
+      }
+    }
+  }
+
+  function hurtPlayer(dmg: number) {
+    if (player.inv > 0 || phase !== 'play') return;
+    player.hp = Math.max(0, player.hp - dmg);
+    player.inv = 0.95;
+    player.hurt = 0.3;
+    shake = 4.6;
+    sfx('hurt');
+    for (let k = 0; k < 9; k++) {
+      const a = Math.random() * 6.28;
+      particles.push({
+        x: player.x,
+        y: player.y - 8,
+        vx: Math.cos(a) * 60,
+        vy: Math.sin(a) * 50 - 20,
+        life: 0.3 + Math.random() * 0.25,
+        max: 0.55,
+        color: '#b91c1c',
+        size: 2,
+        grav: 240,
+      });
+    }
+    updateHp();
+    if (player.hp <= 0) die();
+  }
+
+  function updateHp() {
+    const pct = (player.hp / player.maxHp) * 100;
+    if (elHpFill) elHpFill.style.width = pct + '%';
+    if (elHpNum) elHpNum.textContent = String(Math.ceil(player.hp));
+  }
+
+  function die() {
+    phase = 'dead';
+    recordRun('zombie', kills, { level: 1 }).catch(() => {});
+    showOverlay(
+      'YOU DIED',
+      '感染了',
+      '三条街之外都能听见你的动静。再来一次？',
+      '重来',
+      () => {
+        resetRun();
+        startRun();
+      },
+    );
+  }
+
+  function finishGame() {
+    phase = 'clear';
+    recordRun('zombie', kills, { level: 3 }).catch(() => {});
+    showOverlay(
+      'CHAPTER 01 · CLEAR',
+      '撑过去了',
+      `击杀 ${kills} 名感染者。第一章《醒来》结束 —— 后面的故事等你写。`,
+      '再走一遍',
+      () => {
+        resetRun();
+        startRun();
+      },
+    );
+  }
+
+  function showOverlay(kicker: string, title: string, desc: string, btn: string, onPress: () => void) {
+    if (elKicker) elKicker.textContent = kicker;
+    if (elTitle) elTitle.textContent = title;
+    if (elDesc) elDesc.innerHTML = desc;
+    if (elBtn) elBtn.textContent = btn;
+    if (elOverlay) elOverlay.hidden = false;
+    if (elHud) elHud.hidden = true;
+    btnAction = onPress;
+  }
+
+  let btnAction: (() => void) | null = null;
+
+  function resetRun() {
+    player.hp = player.maxHp;
+    kills = 0;
+    sceneIndex = 0;
+    endingShown = false;
+    dlg.active = false;
+    if (elKills) elKills.textContent = '0';
+    updateHp();
+  }
+
+  function startRun() {
+    if (elOverlay) elOverlay.hidden = true;
+    if (elHud) elHud.hidden = false;
+    if (elDialog) elDialog.hidden = true;
+    (document.activeElement as HTMLElement | null)?.blur?.();
+    sceneIndex = 0;
+    phase = 'play';
+    loadScene('ward');
+    updateHp();
+  }
+
+  /* ---------------- 更新 ---------------- */
+  function update(dt: number) {
+    time += dt;
+
+    // 粒子 / 飘字 永远更新
+    for (let i = particles.length - 1; i >= 0; i--) {
+      const p = particles[i];
+      p.life -= dt;
+      if (p.life <= 0) {
+        particles.splice(i, 1);
+        continue;
+      }
+      p.vy += p.grav * dt;
+      p.x += p.vx * dt;
+      p.y += p.vy * dt;
+      p.vx *= 0.94;
+    }
+    for (let i = floaters.length - 1; i >= 0; i--) {
+      const f = floaters[i];
+      f.life -= dt;
+      f.y -= 26 * dt;
+      if (f.life <= 0) floaters.splice(i, 1);
+    }
+
+    shake *= Math.pow(0.0016, dt);
+    if (shake < 0.05) shake = 0;
+
+    if (hitStop > 0) {
+      hitStop -= dt;
+      return;
+    }
+
+    if (dlg.active) {
+      dlg.acc += dt;
+      const line = dlg.lines[dlg.i];
+      if (line) {
+        dlg.shown = Math.min(line.text.length, Math.floor(dlg.acc / 0.026));
+        renderDialog();
+      }
+      return;
+    }
+
+    if (phase !== 'play') return;
+
+    player.atkCd = Math.max(0, player.atkCd - dt);
+    player.atkTime = Math.max(0, player.atkTime - dt);
+    player.inv = Math.max(0, player.inv - dt);
+    player.hurt = Math.max(0, player.hurt - dt);
+
+    // 输入
+    let dx = 0;
+    let dy = 0;
+    if (keys.has('a') || keys.has('arrowleft')) dx -= 1;
+    if (keys.has('d') || keys.has('arrowright')) dx += 1;
+    if (keys.has('w') || keys.has('arrowup')) dy -= 1;
+    if (keys.has('s') || keys.has('arrowdown')) dy += 1;
+    if (touchMove.active) {
+      dx += touchMove.dx;
+      dy += touchMove.dy;
+      if (Math.hypot(dx, dy) < 0.25) {
+        dx = 0;
+        dy = 0;
+      }
+    }
+
+    const mag = Math.hypot(dx, dy);
+    player.moving = mag > 0.05;
+    if (player.moving) {
+      dx /= mag;
+      dy /= mag;
+      // 攻击时移动减速
+      const speed = player.atkTime > 0 ? 30 : 58;
+      const nx = player.x + dx * speed * dt;
+      if (!collides(nx, player.y, 9, 8)) player.x = nx;
+      const ny = player.y + dy * speed * dt;
+      if (!collides(player.x, ny, 9, 8)) player.y = ny;
+
+      if (Math.abs(dx) > Math.abs(dy)) player.facing = dx > 0 ? 'right' : 'left';
+      else player.facing = dy > 0 ? 'down' : 'up';
+
+      player.walk += dt * 9;
+    } else {
+      player.walk += dt * 2.2;
+    }
+
+    hitZombies(dt);
+
+    // 丧尸
+    for (let i = 0; i < zombies.length; i++) {
+      const z = zombies[i];
+      if (z.dead) {
+        z.deadT += dt;
+        continue;
+      }
+      z.flash = Math.max(0, z.flash - dt);
+      z.stun = Math.max(0, z.stun - dt);
+      z.cd = Math.max(0, z.cd - dt);
+      z.wob += dt * 3.4;
+
+      const distX = player.x - z.x;
+      const distY = player.y - z.y;
+      const dist = Math.hypot(distX, distY);
+
+      if (z.stun <= 0) {
+        if (z.windup > 0) {
+          z.windup -= dt;
+          if (z.windup <= 0) {
+            // 出手判定
+            if (dist < 22) hurtPlayer(z.kind === 'brute' ? 15 : 8);
+            z.cd = z.kind === 'brute' ? 1.15 : 0.85;
+          }
+        } else if (dist < 130) {
+          z.facing = distX >= 0 ? 1 : -1;
+          if (dist < 17 && z.cd <= 0) {
+            z.windup = 0.34;
+          } else if (dist > 15) {
+            const sp = z.kind === 'brute' ? 20 : 27;
+            const vx = (distX / (dist || 1)) * sp;
+            const vy = (distY / (dist || 1)) * sp;
+            const wob = Math.sin(z.wob) * 6;
+            const nx = z.x + (vx + wob) * dt;
+            if (!collides(nx, z.y, 9, 8)) z.x = nx;
+            const ny = z.y + vy * dt;
+            if (!collides(z.x, ny, 9, 8)) z.y = ny;
+          }
+        }
+      }
+
+      // 丧尸之间轻微互推，避免叠在一起
+      for (let j = i + 1; j < zombies.length; j++) {
+        const o = zombies[j];
+        if (o.dead) continue;
+        const ddx = o.x - z.x;
+        const ddy = o.y - z.y;
+        const dd = Math.hypot(ddx, ddy);
+        if (dd > 0.1 && dd < 11) {
+          const push = ((11 - dd) / dd) * 0.5;
+          z.x -= ddx * push;
+          z.y -= ddy * push;
+          o.x += ddx * push;
+          o.y += ddy * push;
+        }
+      }
+    }
+
+    // 出门
+    const def = SCENES[sceneId];
+    for (const ex of def.exits) {
+      const cx = ex.tx * TS + TS / 2;
+      const cy = ex.ty * TS + TS / 2;
+      if (Math.abs(player.x - cx) < 11 && Math.abs(player.y - cy) < 12) {
+        sceneIndex = Math.min(2, sceneIndex + 1);
+        loadScene(ex.to, ex.at);
+        return;
+      }
+    }
+
+    updateCam();
+
+    // 清场 → 结局对话（单一入口，只触发一次）
+    if (!endingShown && sceneId === 'street' && zombies.length > 0 && zombies.every((z) => z.dead)) {
+      endingShown = true;
+      openDialog('ending');
+    }
+  }
+
+  /* ---------------- 绘制 ---------------- */
+  const vignette = (() => {
+    const c = document.createElement('canvas');
+    c.width = VW;
+    c.height = VH;
+    const g = c.getContext('2d')!;
+    const grad = g.createRadialGradient(VW / 2, VH / 2, 70, VW / 2, VH / 2, 210);
+    grad.addColorStop(0, 'rgba(0,0,0,0)');
+    grad.addColorStop(0.6, 'rgba(0,0,0,0.1)');
+    grad.addColorStop(1, 'rgba(2,3,6,0.72)');
+    g.fillStyle = grad;
+    g.fillRect(0, 0, VW, VH);
+    return c;
+  })();
+
+  function drawShadow(x: number, y: number, w: number) {
+    ctx.fillStyle = 'rgba(0,0,0,0.34)';
+    ctx.fillRect(Math.round(x - w / 2), Math.round(y - 2), w, 3);
+  }
+
+  function drawPlayer() {
+    const px = Math.round(player.x);
+    const py = Math.round(player.y);
+    const f = player.facing;
+    const bob = player.moving ? Math.sin(player.walk) : 0;
+    const step = player.moving ? Math.sin(player.walk) : 0;
+    const blink = player.inv > 0 && Math.floor(player.inv * 18) % 2 === 0;
+
+    drawShadow(px, py, 11);
+    if (blink) ctx.globalAlpha = 0.42;
+
+    // 腿
+    ctx.fillStyle = '#242b3a';
+    ctx.fillRect(px - 4, py - 6, 3, 6 + Math.round(step));
+    ctx.fillRect(px + 1, py - 6, 3, 6 - Math.round(step));
+
+    // 外套
+    ctx.fillStyle = player.hurt > 0 ? '#8b4a4a' : '#4e5d7d';
+    const bw = f === 'left' || f === 'right' ? 8 : 10;
+    ctx.fillRect(px - bw / 2, py - 15, bw, 9);
+    // 围巾：唯一的暖色，方便在暗场里一眼找到自己
+    ctx.fillStyle = '#b0392c';
+    ctx.fillRect(px - bw / 2, py - 16, bw, 2);
+
+    // 头
+    ctx.fillStyle = '#e8c9a4';
+    ctx.fillRect(px - 3, py - 21 + Math.round(bob * 0.6), 6, 6);
+    ctx.fillStyle = '#1d222c';
+    ctx.fillRect(px - 3, py - 22 + Math.round(bob * 0.6), 6, 2);
+
+    // 脸朝向
+    ctx.fillStyle = '#2b3342';
+    if (f === 'left') {
+      ctx.fillRect(px - 3, py - 19, 1, 2);
+      ctx.fillStyle = '#1d222c';
+      ctx.fillRect(px - 4, py - 21, 2, 3);
+    } else if (f === 'right') {
+      ctx.fillRect(px + 2, py - 19, 1, 2);
+      ctx.fillStyle = '#1d222c';
+      ctx.fillRect(px + 2, py - 21, 2, 3);
+    } else if (f === 'down') {
+      ctx.fillRect(px - 2, py - 19, 1, 1);
+      ctx.fillRect(px + 1, py - 19, 1, 1);
+    }
+
+    // 挥砍
+    if (player.atkTime > 0) {
+      const t = 1 - player.atkTime / ATTACK_DUR;
+      drawSlash(t);
+    } else {
+      // 手臂
+      ctx.fillStyle = '#e8c9a4';
+      if (f === 'left') ctx.fillRect(px - 6, py - 13, 2, 4);
+      else if (f === 'right') ctx.fillRect(px + 4, py - 13, 2, 4);
+      else ctx.fillRect(px + 3, py - 13, 2, 5);
+    }
+
+    ctx.globalAlpha = 1;
+  }
+
+  function drawSlash(t: number) {
+    const px = Math.round(player.x);
+    const py = Math.round(player.y - 6);
+    const ang = { right: 0, down: Math.PI / 2, left: Math.PI, up: -Math.PI / 2 }[player.facing];
+    const sweep = -0.85 + t * 1.7;
+
+    ctx.save();
+    ctx.translate(px, py);
+    ctx.rotate(ang + sweep * 0.8);
+
+    // 刀身
+    ctx.fillStyle = 'rgba(226, 232, 240, 0.92)';
+    ctx.fillRect(6, -2, 15, 3);
+    ctx.fillStyle = 'rgba(148, 163, 184, 0.9)';
+    ctx.fillRect(6, 1, 15, 1);
+    // 刀尖
+    ctx.fillStyle = 'rgba(248, 250, 252, 0.95)';
+    ctx.fillRect(21, -1, 2, 1);
+
+    // 挥砍残影
+    const a = 0.34 * (1 - Math.abs(t - 0.4) * 1.4);
+    if (a > 0) {
+      ctx.fillStyle = `rgba(186, 226, 255, ${Math.max(0, a)})`;
+      ctx.beginPath();
+      ctx.arc(0, 0, 22, -0.62, 0.62);
+      ctx.arc(0, 0, 12, 0.62, -0.62, true);
+      ctx.closePath();
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  function drawZombie(z: Zombie) {
+    const px = Math.round(z.x);
+    const py = Math.round(z.y);
+
+    if (z.dead) {
+      const fade = Math.min(1, z.deadT / 0.4);
+      ctx.globalAlpha = 1 - fade * 0.2;
+      // 血泊
+      ctx.fillStyle = 'rgba(74, 12, 18, 0.5)';
+      ctx.fillRect(px - 10, py - 3, 20, 5);
+      // 侧卧的躯干
+      ctx.fillStyle = '#3a2028';
+      ctx.fillRect(px - 6, py - 8, 11, 6);
+      // 头
+      ctx.fillStyle = '#4f6b3f';
+      ctx.fillRect(px + 5, py - 8, 5, 5);
+      // 摊开的腿
+      ctx.fillStyle = '#2a1a1e';
+      ctx.fillRect(px - 10, py - 6, 5, 3);
+      ctx.globalAlpha = 1;
+      return;
+    }
+
+    const brute = z.kind === 'brute';
+    const s = brute ? 1 : 0.86;
+    const wob = Math.sin(z.wob) * 1.6;
+    const lean = Math.round(wob);
+    const wind = z.windup > 0;
+
+    drawShadow(px, py, brute ? 14 : 11);
+
+    if (z.flash > 0) {
+      ctx.globalAlpha = 0.9;
+    }
+
+    // 腿
+    ctx.fillStyle = '#2a1d22';
+    ctx.fillRect(px - 4, py - 6, 3, 6);
+    ctx.fillRect(px + 1, py - 6, 3, 6);
+
+    // 身体
+    ctx.fillStyle = z.flash > 0 ? '#ffffff' : brute ? '#4a2430' : '#5c2f3a';
+    const bw = Math.round(11 * s) + (brute ? 3 : 0);
+    ctx.fillRect(px - bw / 2 + lean * 0.3, py - 15 * s - 1, bw, 9 * s + 2);
+
+    // 破口
+    ctx.fillStyle = z.flash > 0 ? '#ffffff' : '#3d1a22';
+    ctx.fillRect(px - 2 + lean * 0.3, py - 13, 3, 3);
+
+    // 头
+    const hx = px - 3 + lean + (z.facing > 0 ? 1 : -1);
+    ctx.fillStyle = z.flash > 0 ? '#ffffff' : brute ? '#6b8f56' : '#7ba763';
+    ctx.fillRect(hx, py - 21 * s - 1, 6, 6);
+    ctx.fillStyle = z.flash > 0 ? '#ffffff' : '#5f8349';
+    ctx.fillRect(hx, py - 21 * s - 1, 6, 2);
+
+    // 眼睛
+    if (z.flash <= 0) {
+      ctx.fillStyle = wind ? '#ff5a4a' : '#e04b3c';
+      ctx.fillRect(hx + 1, py - 19 * s, 1, 1);
+      ctx.fillRect(hx + 4, py - 19 * s, 1, 1);
+    }
+
+    // 伸出的手
+    ctx.fillStyle = z.flash > 0 ? '#ffffff' : '#6b8f56';
+    const armX = z.facing > 0 ? px + 4 : px - 8;
+    ctx.fillRect(armX, py - 13 + (wind ? -2 : 0), 4, 2);
+
+    ctx.globalAlpha = 1;
+
+    // 血条（受伤才显示）
+    if (z.hp < z.maxHp) {
+      const w = brute ? 18 : 14;
+      const pct = Math.max(0, z.hp / z.maxHp);
+      ctx.fillStyle = 'rgba(0,0,0,0.6)';
+      ctx.fillRect(px - w / 2, py - (brute ? 30 : 26), w, 2);
+      ctx.fillStyle = brute ? '#f59e0b' : '#ef4444';
+      ctx.fillRect(px - w / 2, py - (brute ? 30 : 26), Math.round(w * pct), 2);
+    }
+  }
+
+  function draw() {
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.fillStyle = '#0a0c12';
+    ctx.fillRect(0, 0, VW, VH);
+    if (!sceneArt) return;
+
+    const sx = shake > 0 ? (Math.random() - 0.5) * shake : 0;
+    const sy = shake > 0 ? (Math.random() - 0.5) * shake : 0;
+
+    ctx.save();
+    ctx.translate(Math.round(-camX + sx), Math.round(-camY + sy));
+
+    ctx.drawImage(sceneArt, 0, 0);
+
+    // 尸体在最底层
+    for (const z of zombies) if (z.dead) drawZombie(z);
+
+    // 按 y 排序的活体
+    const actors: { y: number; draw: () => void }[] = [];
+    for (const z of zombies) {
+      if (z.dead) continue;
+      actors.push({ y: z.y, draw: () => drawZombie(z) });
+    }
+    actors.push({ y: player.y, draw: drawPlayer });
+    actors.sort((a, b) => a.y - b.y);
+    for (const a of actors) a.draw();
+
+    // 粒子
+    for (const p of particles) {
+      const a = Math.min(1, p.life / (p.max * 0.6));
+      ctx.globalAlpha = a;
+      ctx.fillStyle = p.color;
+      ctx.fillRect(Math.round(p.x), Math.round(p.y), p.size, p.size);
+    }
+    ctx.globalAlpha = 1;
+
+    // 飘字
+    ctx.font = 'bold 8px ui-monospace, monospace';
+    ctx.textAlign = 'center';
+    for (const f of floaters) {
+      ctx.globalAlpha = Math.min(1, f.life / 0.4);
+      ctx.fillStyle = '#00000088';
+      ctx.fillText(f.text, Math.round(f.x) + 1, Math.round(f.y) + 1);
+      ctx.fillStyle = f.color;
+      ctx.fillText(f.text, Math.round(f.x), Math.round(f.y));
+    }
+    ctx.globalAlpha = 1;
+    ctx.textAlign = 'left';
+
+    ctx.restore();
+
+    // 暗角 + 受伤红屏
+    ctx.drawImage(vignette, 0, 0);
+    if (player.hurt > 0) {
+      ctx.fillStyle = `rgba(190, 24, 24, ${Math.min(0.42, player.hurt * 1.4)})`;
+      ctx.fillRect(0, 0, VW, VH);
+    }
+
+    // 低血量脉动
+    if (player.hp > 0 && player.hp < 30 && phase === 'play') {
+      const pulse = (Math.sin(time * 5) + 1) * 0.5;
+      ctx.fillStyle = `rgba(150, 12, 12, ${0.05 + pulse * 0.09})`;
+      ctx.fillRect(0, 0, VW, VH);
+    }
+  }
+
+  /* ---------------- 循环 ---------------- */
+  let last = performance.now();
+  let raf = 0;
+
+  function frame(now: number) {
+    const dt = Math.min(0.05, (now - last) / 1000);
+    last = now;
+    update(dt);
+    draw();
+    raf = requestAnimationFrame(frame);
+  }
+
+  /* ---------------- 输入 ---------------- */
+  function onKeyDown(e: KeyboardEvent) {
+    const k = e.key.toLowerCase();
+
+    if (k === ' ' || k === 'enter') {
+      e.preventDefault();
+      if (dlg.active) advanceDialog();
+      else if (phase === 'play') doAttack();
+      return;
+    }
+    if (k === 'j' || k === 'k') {
+      if (phase === 'play') doAttack();
+      return;
+    }
+    if (k === 'r') {
+      resetRun();
+      startRun();
+      return;
+    }
+    if (k === 'escape') {
+      if (dlg.active) closeDialog();
+      return;
+    }
+    if (['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(k)) {
+      e.preventDefault();
+      keys.add(k);
+    }
+  }
+
+  function onKeyUp(e: KeyboardEvent) {
+    keys.delete(e.key.toLowerCase());
+  }
+
+  window.addEventListener('keydown', onKeyDown);
+  window.addEventListener('keyup', onKeyUp);
+  window.addEventListener('blur', () => keys.clear());
+
+  // 触摸/鼠标：左半屏拖动移动，右半屏点击攻击
+  let pointerId = -1;
+
+  canvas.addEventListener('pointerdown', (e) => {
+    if (phase !== 'play') return;
+    canvas.setPointerCapture(e.pointerId);
+    const rect = canvas.getBoundingClientRect();
+    const rx = (e.clientX - rect.left) / rect.width;
+    if (rx > 0.55) {
+      doAttack();
+      return;
+    }
+    pointerId = e.pointerId;
+    touchMove.active = true;
+    touchMove.id = e.pointerId;
+    touchMove.ox = e.clientX;
+    touchMove.oy = e.clientY;
+    touchMove.dx = 0;
+    touchMove.dy = 0;
+  });
+
+  canvas.addEventListener('pointermove', (e) => {
+    if (!touchMove.active || e.pointerId !== touchMove.id) return;
+    const dx = e.clientX - touchMove.ox;
+    const dy = e.clientY - touchMove.oy;
+    const len = Math.hypot(dx, dy);
+    const maxR = 34;
+    if (len > maxR) {
+      touchMove.ox = e.clientX - (dx / len) * maxR;
+      touchMove.oy = e.clientY - (dy / len) * maxR;
+    }
+    const ndx = (e.clientX - touchMove.ox) / maxR;
+    const ndy = (e.clientY - touchMove.oy) / maxR;
+    touchMove.dx = clamp(ndx, -1, 1);
+    touchMove.dy = clamp(ndy, -1, 1);
+  });
+
+  const endPointer = (e: PointerEvent) => {
+    if (e.pointerId === touchMove.id) {
+      touchMove.active = false;
+      touchMove.dx = 0;
+      touchMove.dy = 0;
+      touchMove.id = -1;
+    }
+  };
+
+  canvas.addEventListener('pointerup', endPointer);
+  canvas.addEventListener('pointercancel', endPointer);
+  canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+
+  elAtk?.addEventListener('pointerdown', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    doAttack();
+  });
+
+  elDialog?.addEventListener('click', () => advanceDialog());
+
+  elBtn?.addEventListener('click', () => {
+    // 遮罩已隐藏时忽略：否则开局后按空格（攻击键）会重新触发按钮
+    if (!elOverlay || elOverlay.hidden) return;
+    initAudio();
+    if (ac && ac.state === 'suspended') ac.resume();
+    elBtn?.blur();
+    if (btnAction) btnAction();
+  });
+
+  /* ---------------- 启动 ---------------- */
+  grid = SCENES.ward.rows.map((r) => r.split(''));
+  mapH = grid.length;
+  mapW = grid[0].length;
+  buildSceneArt();
+  player.x = 5 * TS + TS / 2;
+  player.y = 5 * TS + TS - 2;
+  updateCam(true);
+  updateHp();
+  if (elScene) elScene.textContent = '病房';
+  btnAction = () => {
+    resetRun();
+    startRun();
+  };
+  raf = requestAnimationFrame(frame);
+
+  // 调试用：跑自动化测试时读取内部状态
+  (window as any).__gz = {
+    get player() {
+      return { x: Math.round(player.x), y: Math.round(player.y), hp: player.hp, facing: player.facing };
+    },
+    get scene() {
+      return sceneId;
+    },
+    get phase() {
+      return phase;
+    },
+    get zombies() {
+      return zombies.map((z) => ({ x: Math.round(z.x), y: Math.round(z.y), hp: z.hp, dead: z.dead }));
+    },
+    get kills() {
+      return kills;
+    },
+    get dialog() {
+      return {
+        active: dlg.active,
+        i: dlg.i,
+        total: dlg.lines.length,
+        shown: dlg.shown,
+        text: dlg.lines[dlg.i]?.text ?? null,
+        endingShown,
+      };
+    },
+    tp(tx: number, ty: number) {
+      player.x = tx * TS + TS / 2;
+      player.y = ty * TS + TS - 2;
+      updateCam(true);
+    },
+  };
+
+  document.addEventListener('astro:before-swap', () => {
+    cancelAnimationFrame(raf);
+    window.removeEventListener('keydown', onKeyDown);
+    window.removeEventListener('keyup', onKeyUp);
+  });
+</script>

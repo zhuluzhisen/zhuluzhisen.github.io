@@ -1,0 +1,760 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>惊变一百天·隔离 — 第一章《早高峰》RPG Maker MZ 事件脚本</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 28px 20px 80px;
+    background: #f6f6f3; color: #1f2328;
+    font-family: system-ui, -apple-system, "Microsoft YaHei", "PingFang SC", sans-serif;
+    line-height: 1.75; font-size: 15px;
+  }
+  .wrap { max-width: 980px; margin: 0 auto; }
+  h1 { font-size: 24px; font-weight: 600; margin: 0 0 6px; }
+  .sub { color: #6b6f76; font-size: 14px; margin-bottom: 26px; }
+  h2 {
+    font-size: 18px; font-weight: 600; margin: 40px 0 14px;
+    padding-bottom: 6px; border-bottom: 2px solid #dcdcd6;
+  }
+  h3 { font-size: 16px; font-weight: 600; margin: 26px 0 10px; }
+  p { margin: 0 0 12px; }
+  table { border-collapse: collapse; width: 100%; font-size: 14px; margin: 10px 0 18px; }
+  th, td { border: 1px solid #d9d9d3; padding: 7px 10px; vertical-align: top; text-align: left; }
+  th { background: #ecebe5; font-weight: 600; white-space: nowrap; }
+  td code, p code, li code {
+    font-family: ui-monospace, Consolas, "Courier New", monospace;
+    background: #ecebe5; padding: 1px 5px; border-radius: 3px; font-size: 13px;
+  }
+  .ev {
+    background: #fff; border: 1px solid #dcdcd6; border-radius: 8px;
+    padding: 14px 18px; margin: 14px 0;
+  }
+  .ev-h { font-size: 15px; font-weight: 600; margin-bottom: 8px; }
+  .tags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+  .tag {
+    background: #eef1f7; border: 1px solid #c9d2e3; color: #35415c;
+    border-radius: 4px; padding: 1px 7px; font-size: 12px; line-height: 1.7;
+  }
+  .tag.k { background: #eff5ec; border-color: #c4dcc0; color: #35502f; }
+  .tag.w { background: #fbf0e6; border-color: #e6cfb4; color: #6b4a22; }
+  pre {
+    font-family: ui-monospace, Consolas, "Courier New", monospace;
+    background: #f1f1ed; border: 1px solid #e2e2dc; border-radius: 6px;
+    padding: 10px 14px; font-size: 13px; line-height: 1.65;
+    white-space: pre-wrap; word-break: break-word; margin: 8px 0 0;
+  }
+  pre.dlg { background: #fffdf4; border-color: #e8dcb8; }
+  .lbl { font-size: 12px; font-weight: 600; color: #6b6f76; margin-top: 12px; }
+  .note {
+    background: #fffdf4; border-left: 3px solid #d8b64a;
+    padding: 10px 14px; margin: 12px 0; font-size: 14px;
+  }
+  .warn {
+    background: #fdf3f3; border-left: 3px solid #cf6b6b;
+    padding: 10px 14px; margin: 12px 0; font-size: 14px;
+  }
+  ul, ol { margin: 6px 0 14px; padding-left: 24px; }
+  li { margin-bottom: 5px; }
+  .toc { background:#fff; border:1px solid #dcdcd6; border-radius:8px; padding:14px 20px; }
+  .toc a { color: #2c4d8f; text-decoration: none; }
+  .toc a:hover { text-decoration: underline; }
+  .foot { margin-top: 44px; color: #83878e; font-size: 13px; border-top: 1px solid #dcdcd6; padding-top: 14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>惊变一百天 · 隔离 — 第一章《早高峰》</h1>
+<div class="sub">RPG Maker MZ 事件脚本 · 时间跨度 07:03 → 08:06 · 3 张地图 / 27 个事件 · 供编辑器照搬</div>
+
+<div class="toc">
+<strong>目录</strong>
+<ol>
+  <li><a href="#s1">开关与变量总表</a></li>
+  <li><a href="#s2">地图清单与连接关系</a></li>
+  <li><a href="#s3">MAP001 出租屋（07:03）</a></li>
+  <li><a href="#s4">MAP002 小区门口（07:23）</a></li>
+  <li><a href="#s5">MAP003 公交车厢（07:37）</a></li>
+  <li><a href="#s6">演出技巧对照：黑森町效果 → MZ 指令</a></li>
+  <li><a href="#s7">第一章素材采购清单</a></li>
+  <li><a href="#s8">建工程时的注意事项</a></li>
+</ol>
+</div>
+
+<div class="note">
+<strong>怎么用这份脚本：</strong>左边是剧情节拍，右边是 MZ 里对应的事件指令。<code>◆</code> 开头的是事件指令原文（与编辑器里显示的文字一致），<code>【】</code> 里的是要填的参数。对话文本块可以直接整段复制进「显示文字」指令。坐标是建议值，按你的实际地图摆位调整。
+</div>
+
+<h2 id="s1">1. 开关与变量总表</h2>
+
+<h3>开关（Switches）</h3>
+<table>
+<tr><th>编号</th><th>名称</th><th>用途 / 何时置 ON</th></tr>
+<tr><td>0001</td><td>看过电视新闻</td><td>MAP001 电视机事件第一页结束</td></tr>
+<tr><td>0002</td><td>已回群「收到」</td><td>MAP001 手机群消息选择「回复」</td></tr>
+<tr><td>0003</td><td>已洗漱</td><td>MAP001 镜子事件结束</td></tr>
+<tr><td>0004</td><td>已拿口罩</td><td>MAP001 抽屉事件结束（出门的必要条件）</td></tr>
+<tr><td>0005</td><td>早餐已买</td><td>MAP002 早餐摊买完菜包（上公交的必要条件）</td></tr>
+<tr><td>0006</td><td>听过路人议论</td><td>MAP002 两名买早点男人都对话完</td></tr>
+<tr><td>0007</td><td>看过药店限购纸</td><td>MAP002 药店玻璃门事件</td></tr>
+<tr><td>0008</td><td>看过疾控车</td><td>MAP002 疾控厢式车 / 防护服人员</td></tr>
+<tr><td>0009</td><td>已刷卡上车</td><td>MAP003 刷卡机事件（进车厢深处的必要条件）</td></tr>
+<tr><td>0010</td><td>已应下客户表</td><td>MAP003 刘经理催表后选择「立刻整理」（下车的必要条件）</td></tr>
+<tr><td>0011</td><td>看过咬人短视频</td><td>MAP003 手机短视频事件第二页</td></tr>
+<tr><td>0012</td><td>看过评论区缓存</td><td>MAP003 手机短视频事件第三页</td></tr>
+<tr><td>0013</td><td>接触过鸭舌帽男人</td><td>MAP003 鸭舌帽男人对话结束</td></tr>
+<tr><td>0014</td><td>听过小女孩的话</td><td>MAP003 小女孩事件（需 0013 先 ON）</td></tr>
+<tr><td>0015</td><td>看过市第二医院</td><td>MAP003 车窗事件（下车的必要条件）</td></tr>
+<tr><td>0016</td><td>第一章已结束</td><td>MAP003 下车门事件，进入第二章前置</td></tr>
+</table>
+
+<h3>变量（Variables）</h3>
+<table>
+<tr><th>编号</th><th>名称</th><th>初值</th><th>说明</th></tr>
+<tr><td>0001</td><td>当前时间</td><td>703</td><td>显示为 <code>07:03</code>。每次换地图手动改（703 / 723 / 737 / 806）。用于右上角时间 HUD</td></tr>
+<tr><td>0002</td><td>口罩数量</td><td>0</td><td>抽屉事件 +6，戴 1 摘 5 进包。后续章节持续消耗</td></tr>
+<tr><td>0003</td><td>警觉度</td><td>0</td><td><strong>跨章长线变量</strong>。第一章可涨 3 点（药店限购纸 / 鸭舌帽近距离咳嗽 / 小女孩的话）。第二、三章继续累积，到第四章封城时按数值分支剧情</td></tr>
+<tr><td>0004</td><td>线索数</td><td>0</td><td>听到的「异常信息」条数，结局结算用</td></tr>
+<tr><td>0005</td><td>未回消息数</td><td>0</td><td>刘经理消息没回时 +1，累积到 3 触发额外催促事件</td></tr>
+</table>
+
+<div class="note">
+<strong>设计说明：</strong><code>警觉度</code> 是这一章唯一真正重要的变量。剧本里方旭的态度是「不当回事」——玩家也一样。所以这些 +1 必须做得<strong>毫无反馈</strong>：不弹提示、不加特效，让玩家事后才发现数值涨了。这正是黑森町的做法：把不安埋在日常里，不点破。
+</div>
+
+<h2 id="s2">2. 地图清单与连接关系</h2>
+<table>
+<tr><th>ID</th><th>名称</th><th>建议尺寸</th><th>场景</th><th>BGM / BGS</th><th>出口</th></tr>
+<tr><td>MAP001</td><td>出租屋</td><td>21 × 15</td><td>室内 · 清晨</td><td>BGS：早间新闻底噪（低音量循环）</td><td>→ MAP002（防盗门）</td></tr>
+<tr><td>MAP002</td><td>小区门口</td><td>28 × 20</td><td>室外街道 · 晨光</td><td>BGM：平淡的清晨日常曲<br>BGS：车流 + 人声</td><td>→ MAP003（公交站牌）<br>← MAP001（可回，但屋内已无内容）</td></tr>
+<tr><td>MAP003</td><td>公交车厢</td><td>10 × 22</td><td>车厢内 · 狭长</td><td>BGS：空调嗡鸣 + 引擎</td><td>→ MAP004（下车门，第二章《不在状态》办公区）</td></tr>
+</table>
+
+<div class="note">
+车厢做成 <strong>10 格宽 × 22 格长</strong> 的狭长条：前门刷卡 → 中段鸭舌帽男人 → 后段车窗看医院 → 车尾下车门。玩家被迫一路往后走，路线天然就是剧本的时间顺序，不用额外引导。
+</div>
+
+<h2 id="s3">3. MAP001 出租屋（07:03）</h2>
+
+<div class="ev">
+<div class="ev-h">E010　开场（自动执行）</div>
+<div class="tags"><span class="tag">优先级：自动执行</span><span class="tag">出现条件：无</span><span class="tag">独立开关 A 结束时 ON</span></div>
+<div class="lbl">指令序列</div>
+<pre>◆画面淡入【淡出→淡入，30 帧】
+◆变量操作【0001 当前时间 = 703】
+◆播放 BGS【早间新闻底噪，音量 40，0 帧淡入】
+◆显示文字【见下方文本块 A】
+◆等待【90 帧】
+◆画面色调变化【(-20, -10, 0, 30)，20 帧，等待】
+◆屏幕闪烁【(255,255,255,120)，10 帧，等待】
+◆显示文字【见下方文本块 B】
+◆独立开关操作【A = ON】</pre>
+<div class="lbl">文本块 A</div>
+<pre class="dlg">（2026 年 10 月 24 日　07:03）
+
+“据最新统计，新型冠状病毒感染已波及全球多个国家和地区。
+过去一周，新增死亡人数持续攀升，部分地区的医疗系统正面临
+前所未有的压力……”
+
+女主播的声音平稳、清晰，像是在念一份与任何人都无关的工作报告。</pre>
+<div class="lbl">文本块 B</div>
+<pre class="dlg">啪。
+
+一只手从被子里伸出来，摸了半天，终于按停了手机闹钟。
+方旭翻了个身，把脸埋进枕头。
+
+“再睡五分钟。”
+
+他说完这句话时，已经是第三次了。</pre>
+</div>
+
+<div class="ev">
+<div class="ev-h">E001　电视机</div>
+<div class="tags"><span class="tag">触发：决定键</span><span class="tag">位置：(3,4) 朝下</span><span class="tag k">开关 0001</span></div>
+<div class="lbl">事件页 1（条件：无）</div>
+<pre>◆显示图片【#1 电视画面A，中心(3,4)，普通，不透明 255】
+◆显示文字【见文本块 A，可复用】
+◆开关操作【0001 看过电视新闻 = ON】
+◆消除图片【#1】</pre>
+<div class="lbl">事件页 2（条件：开关 0001 ON）</div>
+<pre>◆显示图片【#1 电视画面B（红色曲线），中心(3,4)】
+◆显示文字【“有关部门提醒广大市民，近期应尽量减少非必要聚集……
+对于网络流传的部分未经核实的视频，请广大市民理性辨别，
+不信谣、不传谣……”】
+◆消除图片【#1】</pre>
+</div>
+
+<div class="ev">
+<div class="ev-h">E002　手机闹钟（床头柜）</div>
+<div class="tags"><span class="tag">触发：决定键</span><span class="tag">可重复</span></div>
+<pre>◆播放 SE【闹钟铃声，音量 80】
+◆屏幕闪烁【(255,255,255,100)，8 帧，等待】
+◆显示文字【（手机又震了。
+这次不是闹钟。
+——不，这次还真是闹钟。）】</pre>
+</div>
+
+<div class="ev">
+<div class="ev-h">E003　手机（销售一组工作群）</div>
+<div class="tags"><span class="tag">触发：决定键</span><span class="tag k">开关 0002</span><span class="tag w">变量 0005</span></div>
+<div class="lbl">事件页 1（条件：开关 0002 OFF）</div>
+<pre>◆显示图片【#2 手机UI框，右上角，普通】
+◆显示文字【见下方文本块】
+◆显示选择项【回复：收到 / 装作没看见】
+：回复：收到
+  ◆开关操作【0002 = ON】
+  ◆显示文字【【方旭：收到。】
+  最后两个字发出去，方旭才勉强睁开眼。】
+  ◆消除图片【#2】
+：装作没看见
+  ◆变量操作【0005 未回消息数 += 1】
+  ◆显示文字【（他把手机扣了过去。）】
+  ◆消除图片【#2】
+◆分支结束</pre>
+<div class="lbl">文本块（群消息）</div>
+<pre class="dlg">【销售一组工作群】
+
+【刘经理：八点半晨会，所有人准时到。】
+【刘经理：本周回款还差一大截，别拿疫情当理由。
+客户不出门，你们不会打电话？】
+【小赵：收到。】
+【阿杰：收到。】</pre>
+</div>
+
+<div class="ev">
+<div class="ev-h">E004　卫生间镜子</div>
+<div class="tags"><span class="tag">触发：决定键</span><span class="tag k">开关 0003</span></div>
+<div class="lbl">指令序列</div>
+<pre>◆画面色调变化【(-34,-34,-34,68)，30 帧，等待】
+◆显示图片【#3 方旭立绘（疲惫），画面中央偏左】
+◆显示文字【见下方文本块】
+◆消除图片【#3】
+◆画面色调变化【(0,0,0,0)，30 帧，等待】
+◆开关操作【0003 已洗漱 = ON】</pre>
+<div class="lbl">文本块</div>
+<pre class="dlg">水龙头一开，冷水冲在脸上，残存的睡意终于散了些。
+
+镜子里是一张没什么精神的脸，眼袋发青，下巴冒着胡茬。
+方旭今年二十八，做销售第四年。
+西装穿得还算体面，工资却始终不够体面。
+
+上个月业绩没达标，提成缩水，房租刚交，
+信用卡还款提醒已经在手机上挂了三天。
+
+至于新闻里说的全球疫情？
+哪年不是这么说，要么说猪瘟传染人，要么说哪哪又发生了化学泄露。
+
+这些都离他太远了，作用在他身上，
+顶多也就是猪肉一斤涨了两块钱。</pre>
+<div class="note">去饱和 + 立绘是黑森町最常用的「内心独白」处理：用 ◆画面色调变化 把世界压成灰，只有立绘是彩色的。成本极低，效果极好。</div>
+</div>
+
+<div class="ev">
+<div class="ev-h">E005　抽屉（口罩）</div>
+<div class="tags"><span class="tag">触发：决定键</span><span class="tag k">开关 0004</span><span class="tag w">变量 0002</span></div>
+<div class="lbl">事件页 1（条件：开关 0003 ON，且 0004 OFF）</div>
+<pre>◆播放 SE【抽屉拉开】
+◆变量操作【0002 口罩数量 += 6】
+◆显示文字【里面有一小包口罩，是公司上个月统一发的。
+他抽出一个，挂上耳朵，又把剩下的塞进公文包侧袋。】
+◆开关操作【0004 已拿口罩 = ON】</pre>
+<div class="lbl">事件页 2（条件：开关 0003 OFF）—— 洗漱前不给拿</div>
+<pre>◆显示文字【（抽屉里好像有东西，但还是先洗把脸吧。）】</pre>
+<div class="lbl">事件页 3（条件：开关 0004 ON）</div>
+<pre>◆显示文字【（剩下的口罩已经在包里了。）】</pre>
+</div>
+
+<div class="ev">
+<div class="ev-h">E006 / E007　茶几、折叠衣架（环境描写）</div>
+<div class="tags"><span class="tag">触发：决定键</span><span class="tag">可重复</span></div>
+<pre>◆显示文字【茶几上堆着外卖盒、客户资料和半包抽纸。】</pre>
+<pre>◆显示文字【靠墙的折叠衣架挂满了衬衫。
+四年的销售生涯，攒下的最体面的东西就是这几件衬衫。】</pre>
+<div class="note">黑森町的「探索感」全靠这类无功能事件堆出来。<strong>建议每张地图至少放 5–8 个纯文字事件</strong>——不推进剧情，只给世界感。这是最便宜、性价比最高的一道工序。</div>
+</div>
+
+<div class="ev">
+<div class="ev-h">E008　防盗门（出口）</div>
+<div class="tags"><span class="tag">触发：决定键</span><span class="tag k">开关 0004</span></div>
+<div class="lbl">事件页 1（条件：开关 0004 OFF）—— 强制折返拿口罩</div>
+<pre>◆显示文字【“钥匙，手机，工牌……”
+他摸了摸裤兜，确认一件没落，这才拽开门。
+
+（临出门时，他想起什么，折回去拉开抽屉。）】
+◆移动路线【玩家（等待完成）：转身向左 3 步】</pre>
+<div class="lbl">事件页 2（条件：开关 0004 ON）</div>
+<pre>◆播放 SE【防盗门关闭】
+◆显示文字【防盗门砰的一声合上，只剩下若有若无的播报声。】
+◆场所移动【MAP002 小区门口，(14,18)，淡出淡入】</pre>
+</div>
+
+<div class="ev">
+<div class="ev-h">E009　电视新闻定时插播（并行事件）</div>
+<div class="tags"><span class="tag w">优先级：并行</span><span class="tag">出现条件：无</span></div>
+<pre>◆等待【600 帧】
+◆显示文字【（电视里，女主播还在继续。）
+“专家表示，目前病毒的部分临床表现仍有待进一步研究，
+呼吁公众不要恐慌……”】
+◆等待【900 帧】
+◆显示文字【（客厅传来断断续续的播报声。）
+“……感染者的常见症状：发热、咳嗽、乏力……”】
+◆等待【1200 帧】
+◆插入循环</pre>
+<div class="note">并行事件每隔一段时间插一句播报，是这一章「日常感」的骨架。玩家不管在做什么，背景里始终有个声音在说「别恐慌」——越往后越讽刺。</div>
+</div>
+
+<h2 id="s4">4. MAP002 小区门口（07:23）</h2>
+
+<div class="ev">
+<div class="ev-h">E020　进场（自动执行）</div>
+<div class="tags"><span class="tag">优先级：自动执行</span><span class="tag">独立开关 A 结束时 ON</span></div>
+<pre>◆变量操作【0001 当前时间 = 723】
+◆显示文字【（七点二十三分。）
+小区门口的早餐摊已经围了不少人。
+
+蒸笼冒着白气，油锅滋滋作响。
+穿校服的学生背着书包，挤在上班族中间等包子。
+外卖骑手一只手握着车把，另一只手接过豆浆，嘴里还催着老板快点。
+
+一切都和平时一样。】
+◆独立开关操作【A = ON】</pre>
+</div>
+
+<div class="ev">
+<div class="ev-h">E001　早餐摊老板</div>
+<div class="tags"><span class="tag">触发：决定键</span><span class="tag k">开关 0005</span><span class="tag w">变量 0004</span></div>
+<div class="lbl">事件页 1（条件：开关 0005 OFF）</div>
+<pre>◆播放 SE【油锅滋滋，循环 60 帧】
+◆显示文字【见下方文本块（点单）】
+◆显示选择项【菜包就菜包 / 算了不买了】
+：菜包就菜包
+  ◆物品操作【早餐 +1】
+  ◆开关操作【0005 早餐已买 = ON】
+  ◆显示文字【（方旭扫完码，拎着早餐往公交站赶。）】
+：算了不买了
+  ◆显示文字【（算了，来不及了。）】
+◆分支结束</pre>
+<div class="lbl">文本块（点单）</div>
+<pre class="dlg">“老板，两个肉包，一杯豆浆，打包！”
+
+“肉包没了，菜包行不行？”
+
+“行行行，快点。”
+
+早餐摊老板套着透明塑料手套，额头上全是汗。</pre>
+<div class="lbl">事件页 2（条件：开关 0005 ON）—— 第二次对话给线索</div>
+<pre>◆显示文字【“最近这病闹得，菜都涨价了。”
+老板一边装袋一边抱怨，
+“昨天夜里听说城南那家医院又满了，救护车一晚上没停过。”】
+◆变量操作【0004 线索数 += 1】
+◆显示气泡表情【本事件：惊叹】</pre>
+</div>
+
+<div class="ev">
+<div class="ev-h">E002 / E003　买早点的男人 A / B</div>
+<div class="tags"><span class="tag">触发：决定键</span><span class="tag k">开关 0006</span></div>
+<pre>◆显示文字【“网上天天这么说。上回还说要封城呢，结果不也好好的？”】</pre>
+<pre>◆显示文字【“就是。”另一个人笑道，
+“真要出大事，咱还能站这儿买包子？”】</pre>
+<div class="note">两个都用独立开关记录；两人都对话完后置 <code>0006 听过路人议论 = ON</code>（用条件分支判断两个独立开关）。</div>
+</div>
+
+<div class="ev">
+<div class="ev-h">E004　围观的笑声</div>
+<div class="tags"><span class="tag">触发：决定键</span><span class="tag">条件：开关 0006 ON</span></div>
+<pre>◆显示气泡表情【玩家：微笑】
+◆显示文字【几个人跟着笑了。
+方旭也笑了一下。
+
+他没时间参与讨论，扫完码便拎着早餐往公交站赶。】</pre>
+</div>
+
+<div class="ev">
+<div class="ev-h">E005　药店玻璃门（限购纸）</div>
+<div class="tags"><span class="tag">触发：决定键</span><span class="tag k">开关 0007</span><span class="tag w">变量 0003 警觉度 +1</span></div>
+<pre>◆显示图片【#4 限购打印纸特写，画面中央】
+◆显示文字【【口罩、消毒用品限量供应。】
+
+纸角被雨水泡得微微卷起。】
+◆变量操作【0003 警觉度 += 1】
+◆开关操作【0007 = ON】
+◆消除图片【#4】</pre>
+<div class="warn">这里的 +1 <strong>不要给任何提示音和特效</strong>。玩家看到一张纸、点一下、走开——就这样。警觉度默默涨上去，等到第四章封城时才结算。这是整个第一章最重要的设计意图。</div>
+</div>
+
+<div class="ev">
+<div class="ev-h">E006 ~ E008　疾控厢式车 / 防护服人员 / 社区工作人员</div>
+<div class="tags"><span class="tag">触发：决定键</span><span class="tag k">开关 0008</span></div>
+<pre>◆显示文字【路口停着一辆白色厢式车，车身印着疾控部门的标志。
+几个穿着厚重防护服的工作人员正在整理路边的隔离栏。
+旁边一位社区工作人员拿着喇叭，提醒经过的人不要聚集。
+
+有人举起手机拍照。】
+◆开关操作【0008 = ON】</pre>
+<pre>◆显示文字【（防护服里的人看不清脸，只能看见面罩上一层雾气。）】</pre>
+<pre>◆播放 SE【喇叭（循环 40 帧）】
+◆显示文字【“请各位市民不要聚集，不要聚集——”】</pre>
+</div>
+
+<div class="ev">
+<div class="ev-h">E009　推自行车的大爷</div>
+<div class="tags"><span class="tag">触发：决定键</span><span class="tag">移动路线：循环左右巡逻</span></div>
+<pre>◆显示文字【“隔三差五消毒，也不知道有没有用。”】</pre>
+</div>
+
+<div class="ev">
+<div class="ev-h">E010　环卫工人</div>
+<div class="tags"><span class="tag">触发：决定键</span><span class="tag">移动路线：扫地动作循环</span></div>
+<pre>◆显示文字【不远处，环卫工人照常扫着落叶。
+早餐店的收款提示音此起彼伏，红灯前的汽车排成一串，
+电动车在人行道边见缝插针。
+
+那些白色防护服看起来格外扎眼。】</pre>
+</div>
+
+<div class="ev">
+<div class="ev-h">E011　公交站牌（出口）</div>
+<div class="tags"><span class="tag">触发：决定键</span><span class="tag k">开关 0005</span></div>
+<div class="lbl">事件页 1（条件：开关 0005 OFF）</div>
+<pre>◆显示文字【（车还有一会儿才来。）
+（……空着肚子开会，一上午都熬不过去。）】</pre>
+<div class="lbl">事件页 2（条件：开关 0005 ON）</div>
+<pre>◆变量操作【0001 当前时间 = 737】
+◆场所移动【MAP003 公交车厢，(5,2)，淡出淡入】</pre>
+</div>
+
+<h2 id="s5">5. MAP003 公交车厢（07:37）</h2>
+
+<div class="ev">
+<div class="ev-h">E030　上车（自动执行）</div>
+<div class="tags"><span class="tag">优先级：自动执行</span><span class="tag">独立开关 A 结束时 ON</span></div>
+<pre>◆播放 SE【车门气动：哧——】
+◆屏幕震动【强度 3，速度 8，20 帧，等待】
+◆显示文字【（七点三十七分。）
+方旭踩着车门关闭前的最后几秒，挤上了公交。
+
+“往里走，往里走！后面还空着呢！”
+司机敲了敲方向盘，语气相当不耐烦。
+
+车厢里有股闷热的塑料味，混着豆浆、香水和廉价洗衣液的气味。
+空调似乎没开足，窗玻璃蒙着薄薄一层水汽。】
+◆独立开关操作【A = ON】</pre>
+</div>
+
+<div class="ev">
+<div class="ev-h">E001　刷卡机</div>
+<div class="tags"><span class="tag">触发：决定键</span><span class="tag k">开关 0009</span></div>
+<pre>◆播放 SE【刷卡：嘀——】
+◆显示文字【（嘀——余额不足，请充值。）】
+◆显示文字【（……这个月工资还没到。）】
+◆开关操作【0009 已刷卡上车 = ON】</pre>
+<div class="note">在 E002「车厢中段栏杆」上加一个拦截：条件 <code>开关 0009 OFF</code> 时显示「（还没刷卡。）」并阻止通行。玩家必须先刷卡才能往里走。</div>
+</div>
+
+<div class="ev">
+<div class="ev-h">E003　手机（短视频）</div>
+<div class="tags"><span class="tag">触发：决定键</span><span class="tag k">开关 0011 / 0012</span><span class="tag w">变量 0003</span><span class="tag w">本章情绪爆点</span></div>
+
+<div class="lbl">事件页 1（条件：开关 0011 OFF）</div>
+<pre>◆显示文字【第一个视频是宠物猫跳进纸箱。
+第二个是探店博主推荐烤肉。
+第三个是个穿西装的男人站在镜头前，教人如何用三句话搞定客户。】
+
+◆显示气泡表情【玩家：无语】
+◆显示文字【方旭面无表情地划走。
+“上班都够烦了……”】</pre>
+
+<div class="lbl">事件页 2（条件：开关 0011 切换）—— 咬人视频</div>
+<pre>◆播放 SE【尖叫，音量 90】
+◆画面色调变化【(-68, -34, -34, 68)，15 帧，等待】
+◆屏幕震动【强度 6，速度 10，40 帧，等待】
+◆显示图片【#5 手机竖屏框，画面中央】
+◆显示图片【#6 咬人画面，中央，不透明 255】
+◆显示文字【见下方文本块（视频内容）】
+◆等待【30 帧】
+◆消除图片【#6】
+◆显示图片【#6 「视频已被删除」提示框，中央】
+◆屏幕闪烁【(255,255,255,160)，8 帧，等待】
+◆显示文字【“删这么快？”】
+◆消除图片【#5】
+◆消除图片【#6】
+◆画面色调变化【(0,0,0,0)，40 帧，等待】
+◆变量操作【0003 警觉度 += 1】
+◆开关操作【0011 看过咬人短视频 = ON】</pre>
+
+<div class="lbl">文本块（视频内容）</div>
+<pre class="dlg">接着，屏幕里突然传来一声尖叫。
+画面晃得厉害。
+
+那是一条明显从国外搬运过来的短视频。
+拍摄者似乎站在街对面，镜头对着一条人来人往的商业街。
+
+视频上方压着一行醒目的中文标题：
+
+【国外街头突发恶性袭击！男子当众咬人，疑似精神失常！】
+
+……
+
+画面中央，一个穿灰色卫衣的男人正摇摇晃晃地穿过马路。
+他的动作很奇怪。
+不像醉汉那种东倒西歪，而是走出几步，突然停住，
+脑袋向旁边一偏，像忘了自己要去哪里。
+
+隔着模糊的画质，方旭看不清那人的表情，
+只觉得他双眼红得厉害，嘴边似乎挂着一道亮晶晶的液体。
+
+灰衣男人忽然加快脚步，冲向前方一个提购物袋的女人。
+他抓住女人的胳膊，低头狠狠咬了下去。
+
+尖叫一下子炸开。
+
+……
+
+黑外套男人终于把袭击者拽开，灰衣男人踉跄两步，跪倒在地。
+方旭以为事情到这里就结束了。
+谁知那人忽然抬起头，又向黑外套男人扑去。
+
+那张脸上没有半点正常争执时的怒气，
+只有一种近乎茫然的急切。
+他张着嘴，唾液顺着下巴往下淌，
+眼神却牢牢盯着面前的人。
+
+“我去……”</pre>
+<div class="warn"><strong>这是第一章唯一一次「色调突变」。</strong>整章都用平淡的日常配色，只有这一瞬间把画面压红、震屏、尖叫——黑森町的核心手法就是「平时不给特效，给的时候才吓人」。别滥用。</div>
+
+<div class="lbl">事件页 3（条件：开关 0011 ON，0012 OFF）—— 评论区缓存</div>
+<pre>◆显示文字【他向下翻了翻评论区的缓存，零星几条还留在屏幕上。】
+
+◆显示文字【【这不是演的吧？】
+【我在那边留学，这两天真的有人在街上发疯。】
+【肯定磕了东西，国外这种新闻又不少。】
+【别传了，谣言。】】
+
+◆显示文字【评论还没看完，页面一刷新，便什么也没有了。】
+
+◆显示选择项【再找找看 / 算了，磕大了呗】
+：再找找看
+  ◆显示文字【（重试了三次，链接彻底失效。）】
+  ◆变量操作【0003 警觉度 += 1】
+：算了，磕大了呗
+  ◆显示文字【“估计磕大了吧。”
+  在他看来，这解释再合理不过。】
+◆分支结束
+◆显示文字【他甚至没把视频和早上电视里那条关于病毒的新闻联系起来。
+没那个必要。】
+◆开关操作【0012 = ON】</pre>
+</div>
+
+<div class="ev">
+<div class="ev-h">E004　鸭舌帽男人</div>
+<div class="tags"><span class="tag">触发：决定键 / 与事件接触</span><span class="tag k">开关 0013</span><span class="tag w">变量 0003</span></div>
+<div class="lbl">事件页 1（默认）</div>
+<pre>◆移动路线【本事件：循环 —— 低头、等待 60、轻微抖动、等待 90】
+◆播放 SE【咳嗽声（随机间隔）】</pre>
+<div class="lbl">事件页 2（触发：决定键，条件：开关 0013 OFF）</div>
+<pre>◆显示文字【旁边站着一名戴鸭舌帽的年轻男人，一直低着头。
+男人的口罩似乎被汗浸湿了，呼吸声很重，偶尔还会轻轻咳嗽。
+
+方旭不动声色地往另一侧挪了半步。
+他不是害怕，只是不想请病假。
+这月全勤奖还有三百块。】
+
+◆显示文字【男人察觉到有人看他，尴尬地笑了笑，声音有些沙哑：
+“昨晚加班，没睡好。”】
+
+◆显示气泡表情【本事件：汗】
+◆显示文字【方旭礼貌地点了点头。
+他自己昨天也只睡了四个小时，实在没资格评价别人。】
+
+◆变量操作【0003 警觉度 += 1】
+◆开关操作【0013 = ON】</pre>
+</div>
+
+<div class="ev">
+<div class="ev-h">E005　抱孩子的女人 + 小女孩</div>
+<div class="tags"><span class="tag">触发：决定键</span><span class="tag">条件：开关 0013 ON</span><span class="tag k">开关 0014</span><span class="tag w">变量 0003</span></div>
+<pre>◆播放 SE【上车门：哧——】
+◆显示文字【车又停了一站，上来一位抱着孩子的女人。】
+
+◆显示气泡表情【本事件：感叹】
+◆显示文字【小女孩趴在母亲肩头，忽然指着鸭舌帽男人，小声问：
+“妈妈，那个叔叔眼睛怎么那么红？”】
+
+◆显示文字【女人立刻把孩子的手按下来。
+“别乱指人，不礼貌。”】
+
+◆显示文字【方旭抬起头，恰好看见那男人抬手揉了揉眼睛。
+也许是熬夜，也许是感冒。】
+
+◆变量操作【0003 警觉度 += 1】
+◆变量操作【0004 线索数 += 1】
+◆开关操作【0014 = ON】</pre>
+</div>
+
+<div class="ev">
+<div class="ev-h">E006　车窗（市第二医院）</div>
+<div class="tags"><span class="tag">触发：决定键</span><span class="tag k">开关 0015</span><span class="tag">下车的必要条件</span></div>
+<pre>◆显示图片【#7 市第二医院外景，贴在车窗位置】
+◆显示文字【（八点零六分。）
+公交车驶过市第二医院。
+
+门诊楼前停着两辆救护车，几名穿防护服的人正在引导排队的患者。
+医院外墙上挂着一条崭新的横幅，红底白字，
+写着“科学防控、理性就医”。
+
+隔着车窗，方旭只看了一眼。】
+
+◆显示文字【“医院人真多啊。”前排有人感叹。
+“换季嘛，哪年不这样？”
+话题很快转到了天气、菜价和昨晚的球赛。】
+
+◆等待【30 帧】
+◆消除图片【#7】
+◆显示文字【公交继续往前开，医院渐渐消失在后视镜里。】
+◆开关操作【0015 = ON】</pre>
+</div>
+
+<div class="ev">
+<div class="ev-h">E007　手机（刘经理催表）</div>
+<div class="tags"><span class="tag">触发：决定键</span><span class="tag">条件：开关 0011 ON</span><span class="tag k">开关 0010</span></div>
+<pre>◆播放 SE【手机震动】
+◆显示图片【#2 手机UI框，右上角】
+◆显示文字【【刘经理：方旭，客户表呢？还有二十分钟开会。】】
+◆消除图片【#2】
+
+◆显示选择项【立刻整理 / 再刷一会儿】
+：立刻整理
+  ◆开关操作【0010 已应下客户表 = ON】
+  ◆显示文字【方旭立刻关掉短视频，翻出工作文件。
+  表格加载得很慢，在这个快节奏的社会上确实很让人心烦。】
+：再刷一会儿
+  ◆变量操作【0005 未回消息数 += 1】
+  ◆显示文字【（又划了两条。）
+  （……算了。）】
+  ◆开关操作【0010 = ON】
+◆分支结束</pre>
+</div>
+
+<div class="ev">
+<div class="ev-h">E008　急刹车（并行事件）</div>
+<div class="tags"><span class="tag w">优先级：并行</span><span class="tag">条件：开关 0011 ON</span></div>
+<pre>◆等待【300 帧】
+◆播放 SE【刹车：吱——】
+◆屏幕震动【强度 5，速度 9，30 帧，等待】
+◆显示文字【公交车恰好在这时猛地刹了一下。
+方旭一手抓紧扶杆，另一只手护住豆浆，
+才没把早餐泼到旁边人的裤腿上。】
+
+◆显示文字【“师傅，能不能慢点！”后排有人喊。
+“前面车突然变道，我能怎么办？”司机回了一句。
+车厢里响起几声抱怨，很快又安静下来。】
+
+◆独立开关操作【A = ON】</pre>
+<div class="note">把它排在看完视频之后触发——玩家刚看完咬人画面、心神不宁时来一次急刹，物理上的晃动会放大心理上的不安。剧本里这段就是这么安排的。</div>
+</div>
+
+<div class="ev">
+<div class="ev-h">E009　下车门（出口 → 第二章）</div>
+<div class="tags"><span class="tag">触发：决定键</span><span class="tag k">开关 0010 + 0015</span></div>
+<div class="lbl">事件页 1（条件：开关 0010 OFF 或 0015 OFF）</div>
+<pre>◆显示文字【（还没到站。）】</pre>
+<div class="lbl">事件页 2（条件：开关 0010 ON 且 0015 ON）</div>
+<pre>◆显示文字【窗外的城市正一点点醒来。
+
+写字楼的玻璃幕墙反射着阳光，十字路口有人争抢最后几秒绿灯，
+学校门口的保安给迟到的学生开门。
+穿防护服的人、戴口罩的人、咳嗽的人，
+与提着早餐奔跑的人混在一起，
+完全没有新闻里描述的那么夸张。
+
+想到这，方旭忍不住摇了摇头——
+可能真到世界末日，
+那帮整天坐在演播室里衣冠楚楚的人还是说着同一套说辞吧。】
+
+◆变量操作【0001 当前时间 = 806】
+◆开关操作【0016 第一章已结束 = ON】
+◆播放 SE【到站广播】
+◆场所移动【MAP004 办公区（第二章《不在状态》），淡出淡入】</pre>
+</div>
+
+<h2 id="s6">6. 演出技巧对照：黑森町效果 → MZ 指令</h2>
+<table>
+<tr><th>效果</th><th>MZ 实现</th><th>用在第一章哪里</th></tr>
+<tr><td>色调突变（不安降临）</td><td><code>◆画面色调变化</code> 15 帧快速过渡 + <code>◆屏幕震动</code></td><td>公交上咬人视频（全章唯一一次）</td></tr>
+<tr><td>老电视 / 回忆滤镜</td><td><code>◆显示图片</code> 贴一张半透明扫描线 PNG（叠加模式）+ <code>◆播放SE</code> 底噪</td><td>出租屋电视新闻</td></tr>
+<tr><td>内心独白</td><td><code>◆画面色调变化</code> 去饱和 + <code>◆显示图片</code> 立绘</td><td>卫生间镜子</td></tr>
+<tr><td>气泡表情补情绪</td><td><code>◆显示气泡表情</code>（内建指令，无需插件）</td><td>小女孩、鸭舌帽男人、群众笑声</td></tr>
+<tr><td>手机 UI 弹出</td><td><code>◆显示图片</code> 贴手机框 + <code>◆移动图片</code> 做滑入</td><td>工作群消息、刘经理催表</td></tr>
+<tr><td>环境持续输出</td><td><code>◆并行事件</code> + <code>◆等待</code> + <code>◆插入循环</code></td><td>电视新闻插播、车厢广播</td></tr>
+<tr><td>时间 HUD</td><td><code>◆变量操作</code> 改 0001 + HUD 类插件显示；或保守做法：换图时在角落贴一张写死时间的图片</td><td>每张地图进场时更新</td></tr>
+<tr><td>探索感 / 世界感</td><td>大量纯文字的「决定键」事件（5–8 个/图）</td><td>茶几、衣架、环卫工人、防护服……</td></tr>
+</table>
+
+<div class="note">
+<strong>插件建议：第一章尽量不装插件。</strong>上面列出的效果用 MZ 内建指令全都能做。先把叙事跑通，等第二章需要「群消息滚动 UI」「时间流逝系统」时再考虑插件——那时你才知道真正缺什么。
+</div>
+
+<h2 id="s7">7. 第一章素材采购清单</h2>
+
+<h3>Tileset（3 套）</h3>
+<table>
+<tr><th>用途</th><th>需要包含</th><th>itch.io 搜索词</th></tr>
+<tr><td>现代公寓室内</td><td>床、床头柜、折叠衣架、茶几、老款电视、抽屉柜、卫生间镜子、防盗门、地板/墙</td><td><code>modern apartment interior tileset</code><br><code>apartment tileset rpg maker mz</code></td></tr>
+<tr><td>城市街道 · 清晨</td><td>早餐摊 + 蒸笼 + 油锅、药店玻璃门、公交站牌、厢式货车、隔离栏、落叶、电动车、斑马线、人行道砖</td><td><code>modern city tileset rpg maker mz</code><br><code>chinese city tileset</code><br><code>urban city tileset</code></td></tr>
+<tr><td>公交车厢内部</td><td>座椅（成排）、扶杆、车窗（带雾气）、刷卡机、驾驶位 + 方向盘、车门、车厢地板</td><td><code>bus interior tileset</code><br><code>vehicle interior tileset rpg maker</code></td></tr>
+</table>
+
+<h3>角色行走图（48×48，4 向 × 3 帧）</h3>
+<ul>
+<li><strong>方旭</strong>（主角）：西装 + 公文包，建议做「戴口罩 / 不戴口罩」两个版本</li>
+<li>早餐摊老板（围裙 + 透明手套）、外卖骑手（头盔 + 保温箱）</li>
+<li>买早点群众 男A / 男B（戴口罩）、校服学生（背书包）</li>
+<li>社区工作人员（红袖章 + 喇叭）、疾控防护服人员（白色防护服 + 面罩）</li>
+<li>环卫工人（橙色背心 + 扫帚）、推自行车大爷</li>
+<li>公交司机（制服）、鸭舌帽男人（帽子 + 口罩，需「低头」单帧）</li>
+<li>抱孩子的女人 + 小女孩、前排乘客 ×2</li>
+</ul>
+
+<h3>图片（Pictures，用于 ◆显示图片）</h3>
+<ul>
+<li>方旭立绘（疲惫 / 皱眉 两版）</li>
+<li>手机 UI 框（群消息版 + 私聊版）</li>
+<li>电视新闻画面 ×3（国外城市 / 医院排队 / 红色上升曲线）</li>
+<li>手机竖屏视频框 + 咬人画面 + 「视频已被删除」提示框</li>
+<li>药店限购打印纸特写</li>
+<li>市第二医院外景（贴车窗用）</li>
+<li>扫描线 / CRT 叠层（半透明，做老电视用）</li>
+</ul>
+
+<h3>音频</h3>
+<ul>
+<li><strong>BGS：</strong>早间新闻底噪、街道环境（车流 + 人声）、车厢空调嗡鸣 + 引擎</li>
+<li><strong>BGM：</strong>清晨日常曲（平淡、略带一点不安的弦乐垫底）</li>
+<li><strong>SE：</strong>闹钟、手机震动、刷卡「嘀」、油锅滋滋、收款提示音、公交刹车、车门气动、喇叭、咳嗽、尖叫、抽屉拉开、防盗门关闭</li>
+</ul>
+
+<div class="warn">
+<strong>授权提醒：</strong>itch.io 上多数素材包标注「Commercial use allowed」，但常常是「付费版才含商用授权、免费版仅限个人练习」。你若打算上架 Steam，购买前逐个确认 license 条款。另外 RPG Maker 自带素材<strong>只允许在 RPG Maker 制作的游戏中使用</strong>，不能单独分发。
+</div>
+
+<h2 id="s8">8. 建工程时的注意事项</h2>
+<ol>
+<li><strong>中文没问题。</strong>MZ 原生 UTF-8，显示文字里直接写中文即可，不用像 MV 那样折腾字体。</li>
+<li><strong>先建一张 999 号测试图。</strong>把三张地图的出口先用最丑的素材摆通跑一遍流程，确认事件链不卡死，再回来画美术。叙事游戏的坑 90% 是「某个开关没置上，玩家永久卡关」。</li>
+<li><strong>每个出口都配「保底页」。</strong>出口事件永远留一页 <code>条件：无</code> 的兜底，显示「（还没到站。）」之类。这样即使开关逻辑出错，玩家也不会走到死路上。</li>
+<li><strong>地图尺寸别贪大。</strong>第一章三张图都是小图。黑森町的成功在于「小而密」——每张图塞满可交互物件，而不是铺一张空旷的大城。</li>
+<li><strong>警觉度（变量 0003）不要显示给玩家。</strong>它的作用是跨章累积，第四章封城时按数值给不同的剧情分支。现在显示出来就泄底了。</li>
+<li><strong>存盘点：每张地图进场即自动存档</strong>（<code>◆自动执行</code> 里加 <code>◆打开存档画面</code> 或直接 <code>◆保存</code>）。黑森町支持任意时刻存档，玩家体验差别很大。</li>
+</ol>
+
+<div class="foot">
+《惊变一百天 · 隔离》第一章事件脚本 · 依据 docs/剧本/第一章.txt 拆条 · 共 27 个事件 / 3 张地图<br>
+下一步：确认这份脚本后，可继续拆第二章《不在状态》（08:19 办公区 → 09:40 客户写字楼 → 17:05 公司大堂）。
+</div>
+
+</div>
+</body>
+</html>
